@@ -63,7 +63,8 @@ def remove_user(username):
     send=requests.post('http://127.0.0.1:5000/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
-    if(username not in credential[0]):
+    #print(credential)
+    if(len(credential)<1):
         return Response("Username not found", status=400, mimetype='application/text')
     else:
         inp={"table":"Login","type":"delete","where":"username='"+username+"'"}
@@ -80,7 +81,8 @@ def create_ride():
     credential=send.content
     credential=eval(credential)
 
-    if("created_by" not in json or "timestamp" not in json or "source" not in json or "destination" not in json or json["created_by"] not in credential[0]):
+    #Check if timestamp in the correct format
+    if("created_by" not in json or "timestamp" not in json or "source" not in json or "destination" not in json or len(credential)<1 or json["source"]=="" or json["destination"]=="" or int(json["source"])<1 or int(json["source"])>198 or int(json["destination"])<1 or int(json["destination"])>198):
         return Response("Wrong format",status=400,mimetype="application/text")
     else:
         rideId=randint(0, 10000)
@@ -117,10 +119,16 @@ def list_rides():
     res=eval(res)
 
     result=[]
+    
     for i in range(0,len(res)):
         datetimeObj = datetime.strptime(res[i][2], '%d-%m-%Y:%S-%M-%H')
         if datetimeObj>datetime.now():
-            result.append(res[i])
+            #result.append(res[i])
+            temp = {}
+            temp["rideId"] = res[i][0]
+            temp["username"] = res[i][1]
+            temp["timestamp"] = res[i][2]
+            result.append(temp)
         
 
     if(len(result)==0):
@@ -176,7 +184,7 @@ def join_ride(rideId):
     ride=send.content
     ride=eval(ride)
     rideId = int(rideId)
-    if(len(ride)==0 or "username" not in json or len(credential)==0):
+    if(len(ride)==0 or "username" not in json or len(credential)<1):
         return Response("Wrong rideId/username",status=204,mimetype="application/text")
     else:
         inp={"table":"Users","type":"insert","columns":["RideId","username"],"data":[str(rideId),json["username"]]}
@@ -193,13 +201,13 @@ def delete_ride(rideId):
     ride=send.content
     ride=eval(ride)
     rideId = int(rideId)
-    if(len(ride)==0):
-        return Response("Wrong rideId",status=204,mimetype="application/text")
-    else:
-        inp={"table":"Rides","type":"delete","where":"RideId='"+str(rideId)+"'"}
-        send=requests.post('http://127.0.0.1:5000/api/v1/db/write',json=inp)
-        ret=send.json()
-        return Response("Deleted ride",status=200,mimetype="application/text")
+    #if(len(ride)==0):
+    #    return Response("Wrong rideId",status=204,mimetype="application/text")
+    #else:
+    inp={"table":"Rides","type":"delete","where":"RideId='"+str(rideId)+"'"}
+    send=requests.post('http://127.0.0.1:5000/api/v1/db/write',json=inp)
+    ret=send.json()
+    return Response("Deleted ride",status=200,mimetype="application/text")
 
 @app.route('/api/v1/db/write',methods=["POST"])
 def write_db():
