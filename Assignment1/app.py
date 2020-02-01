@@ -18,6 +18,9 @@ def is_sha1(maybe_sha):
         return False
     return True
 
+# def wrong(timestamp):
+
+
 @app.route('/api/v1')
 def start():
     inp={"table":"Login","columns":["username","password"],"where":""}
@@ -82,7 +85,7 @@ def create_ride():
     credential=eval(credential)
 
     #Check if timestamp in the correct format
-    if("created_by" not in json or "timestamp" not in json or "source" not in json or "destination" not in json or len(credential)<1 or json["source"]=="" or json["destination"]=="" or int(json["source"])<1 or int(json["source"])>198 or int(json["destination"])<1 or int(json["destination"])>198):
+    if("created_by" not in json or "timestamp" not in json or "source" not in json or "destination" not in json or len(credential)<1 or json["source"]=="" or json["destination"]=="" or int(json["source"])<1 or int(json["source"])>198 or int(json["destination"])<1 or int(json["destination"])>198 ):
         return Response("Wrong format",status=400,mimetype="application/text")
     else:
         rideId=randint(0, 10000)
@@ -102,7 +105,7 @@ def create_ride():
         inp={"table":"Users","type":"insert","columns":["RideId","username"],"data":[str(rideId),json["created_by"]]}
         send=requests.post('http://127.0.0.1:5000/api/v1/db/write',json=inp)
         ret=send.json()
-        return Response("Ride created",status=200,mimetype="application/text")
+        return Response("Ride created",status=201,mimetype="application/text")
 
 @app.route('/api/v1/rides',methods=["GET"])
 def list_rides():
@@ -164,13 +167,20 @@ def details_ride(rideId):
         riders=send.content
         riders=eval(riders)
 
+        temp = {}
+        temp["rideId"] = res[0][0]
+        temp["created_by"] = res[0][1]
+
         ride=[]
         for i in range(0,len(riders)):
             ride.append(riders[i][0])
-        
-        res[0].append(ride)
 
-        return jsonify(res)
+        temp["users"] = ride
+        temp["timestamp"] = res[0][2]
+        temp["source"] = res[0][3]
+        temp["destination"] = res[0][4]
+
+        return jsonify(temp)
 
 @app.route('/api/v1/rides/<rideId>',methods=["POST"])
 def join_ride(rideId):
