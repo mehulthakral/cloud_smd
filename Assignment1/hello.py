@@ -5,7 +5,7 @@ import ast
 from datetime import datetime
 from random import randint
 
-db = pymysql.connect("localhost", "user", "123", "Cloud")
+db = pymysql.connect("localhost", "user", "123", "CLOUD")
 
 app = Flask(__name__)
 
@@ -25,7 +25,7 @@ def hi():
 
 @app.route('/api/v1')
 def start():
-    inp={"table":"Login","columns":["username","password"],"where":""}
+    inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":""}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
@@ -39,7 +39,7 @@ def add_user():
     if("username" not in json or "password" not in json):
         return Response("Wrong request format",status=400,mimetype='application/text')
 
-    inp={"table":"Login","columns":["username","password"],"where":""}
+    inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":""}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
@@ -55,7 +55,7 @@ def add_user():
         return Response("Wrong password format", status=400, mimetype='application/text')  
     
     else:       
-        inp={"table":"Login","columns":["username","password"],"data":[username,password],"type":"insert"}
+        inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"data":[username,password],"type":"insert"}
         send=requests.post('http://52.73.190.55/api/v1/db/write',json=inp)
         ret=send.json()
         #print(ret)
@@ -64,7 +64,7 @@ def add_user():
 @app.route('/api/v1/users/<username>',methods=["DELETE"])
 def remove_user(username):
 
-    inp={"table":"Login","columns":["username","password"],"where":"username='"+username+"'"}
+    inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+username+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
@@ -72,7 +72,7 @@ def remove_user(username):
     if(len(credential)<1):
         return Response("Username not found", status=400, mimetype='application/text')
     else:
-        inp={"table":"Login","type":"delete","where":"username='"+username+"'"}
+        inp={"table":"LOGIN","type":"delete","where":"USERNAME='"+username+"'"}
         send=requests.post('http://52.73.190.55/api/v1/db/write',json=inp)
         ret=send.json()
         return Response("Removed user %s !" %username, status=200, mimetype='application/text')
@@ -81,7 +81,7 @@ def remove_user(username):
 def create_ride():
     json = request.get_json()
 
-    inp={"table":"Login","columns":["username","password"],"where":"username='"+json["created_by"]+"'"}
+    inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+json["created_by"]+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
@@ -91,20 +91,20 @@ def create_ride():
         return Response("Wrong format",status=400,mimetype="application/text")
     else:
         rideId=randint(0, 10000)
-        inp={"table":"RIDES","columns":["RideId","CreatedBy"],"where":"RideId='"+str(rideId)+"'"}
+        inp={"table":"RIDES","columns":["RIDEID","CREATEDBY"],"where":"RIDEID='"+str(rideId)+"'"}
         send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
         res=send.content
         print(res)
         while len(res)>5:
             print(res)
             rideId=randint(0, 10000)
-            inp={"table":"RIDES","columns":["RideId","CreatedBy","timestamp"],"where":"RideId='"+str(rideId)+"'"}
+            inp={"table":"RIDES","columns":["RIDEID","CREATEDBY","timestamp"],"where":"RIDEID='"+str(rideId)+"'"}
             send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
             res=send.content
-        inp={"table":"RIDES","type":"insert","columns":["RideId","CreatedBy","Timestamp","Source","Destination"],"data":[str(rideId),json["created_by"],json["timestamp"],json["source"],json["destination"]]}
+        inp={"table":"RIDES","type":"insert","columns":["RIDEID","CREATEDBY","TIMESTAMPS","SOURCE","DESTINATION"],"data":[str(rideId),json["created_by"],json["timestamp"],json["source"],json["destination"]]}
         send=requests.post('http://52.73.190.55/api/v1/db/write',json=inp)
         ret=send.json()
-        inp={"table":"USERS","type":"insert","columns":["RideId","username"],"data":[str(rideId),json["created_by"]]}
+        inp={"table":"USERS","type":"insert","columns":["RIDEID","USERNAME"],"data":[str(rideId),json["created_by"]]}
         send=requests.post('http://52.73.190.55/api/v1/db/write',json=inp)
         ret=send.json()
         return Response("Ride created",status=201,mimetype="application/text")
@@ -118,7 +118,7 @@ def list_rides():
     if(source=="" or destination=="" or int(source)<1 or int(source)>198 or int(destination)<1 or int(destination)>198 ):
         return Response("Wrong/Empty src or dest",status=400,mimetype="application/text")
     
-    inp={"table":"RIDES","columns":["RideId","CreatedBy","timestamp"],"where":"source='"+source+"' AND destination='"+destination+"'"}
+    inp={"table":"RIDES","columns":["RIDEID","CREATEDBY","TIMESTAMPS"],"where":"SOURCE='"+source+"' AND DESTINATION='"+destination+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     res=send.content
     res=eval(res)
@@ -131,7 +131,7 @@ def list_rides():
             #result.append(res[i])
             temp = {}
             temp["rideId"] = res[i][0]
-            temp["username"] = res[i][1]
+            temp["USERNAME"] = res[i][1]
             temp["timestamp"] = res[i][2]
             result.append(temp)
         
@@ -145,7 +145,7 @@ def list_rides():
 def details_ride(rideId):
 
     
-    inp={"table":"RIDES","columns":["RideId"],"where":"RideId='"+rideId+"'"}
+    inp={"table":"RIDES","columns":["RIDEID"],"where":"RIDEID='"+rideId+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     res=send.content
     res=eval(res)
@@ -159,12 +159,12 @@ def details_ride(rideId):
     if flag==0:
         return Response("No match found",status=204,mimetype="application/text")
     else:
-        inp={"table":"RIDES","columns":["RideId","CreatedBy","Timestamp","source","destination"],"where":"RideId='"+str(rideId)+"'"}
+        inp={"table":"RIDES","columns":["RIDEID","CREATEDBY","TIMESTAMPS","SOURCE","DESTINATION"],"where":"RIDEID='"+str(rideId)+"'"}
         send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
         res=send.content
         res=eval(res)
 
-        inp={"table":"USERS","columns":["username"],"where":"RideId='"+str(rideId)+"'"}
+        inp={"table":"USERS","columns":["USERNAME"],"where":"RIDEID='"+str(rideId)+"'"}
         send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
         riders=send.content
         riders=eval(riders)
@@ -187,11 +187,11 @@ def details_ride(rideId):
 @app.route('/api/v1/rides/<rideId>',methods=["POST"])
 def join_ride(rideId):
     json = request.get_json()
-    inp={"table":"Login","columns":["username","password"],"where":"username='"+json["username"]+"'"}
+    inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+json["username"]+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
-    inp={"table":"RIDES","columns":["RideId"],"where":"RideId='"+rideId+"'"}
+    inp={"table":"RIDES","columns":["RIDEID"],"where":"RIDEID='"+rideId+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     ride=send.content
     ride=eval(ride)
@@ -199,7 +199,7 @@ def join_ride(rideId):
     if(len(ride)==0 or "username" not in json or len(credential)<1):
         return Response("Wrong rideId/username",status=204,mimetype="application/text")
     else:
-        inp={"table":"USERS","type":"insert","columns":["RideId","username"],"data":[str(rideId),json["username"]]}
+        inp={"table":"USERS","type":"insert","columns":["RIDEID","USERNAME"],"data":[str(rideId),json["username"]]}
         send=requests.post('http://52.73.190.55/api/v1/db/write',json=inp)
         ret=send.json()
         #rides[rideId][4].append(json["username"])
@@ -208,7 +208,7 @@ def join_ride(rideId):
 @app.route('/api/v1/rides/<rideId>',methods=["DELETE"])
 def delete_ride(rideId):
 
-    inp={"table":"RIDES","columns":["RideId"],"where":"RideId='"+rideId+"'"}
+    inp={"table":"RIDES","columns":["RIDEID"],"where":"RIDEID='"+rideId+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     ride=send.content
     ride=eval(ride)
@@ -216,7 +216,7 @@ def delete_ride(rideId):
     #if(len(ride)==0):
     #    return Response("Wrong rideId",status=204,mimetype="application/text")
     #else:
-    inp={"table":"RIDES","type":"delete","where":"RideId='"+str(rideId)+"'"}
+    inp={"table":"RIDES","type":"delete","where":"RIDEID='"+str(rideId)+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/write',json=inp)
     ret=send.json()
     return Response("Deleted ride",status=200,mimetype="application/text")
@@ -245,7 +245,7 @@ def write_db():
             sql = "DELETE FROM "+json["table"]
 
     cur.execute(sql)
-    #cur.execute("INSERT INTO Login(username,password) VALUES ('Test','123')")
+    #cur.execute("INSERT INTO LOGIN(username,password) VALUES ('Test','123')")
     db.commit()
     cur.close()
 
