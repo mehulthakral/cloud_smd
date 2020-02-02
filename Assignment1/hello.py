@@ -91,20 +91,20 @@ def create_ride():
         return Response("Wrong format",status=400,mimetype="application/text")
     else:
         rideId=randint(0, 10000)
-        inp={"table":"Rides","columns":["RideId","CreatedBy"],"where":"RideId='"+str(rideId)+"'"}
+        inp={"table":"RIDES","columns":["RideId","CreatedBy"],"where":"RideId='"+str(rideId)+"'"}
         send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
         res=send.content
         print(res)
         while len(res)>5:
             print(res)
             rideId=randint(0, 10000)
-            inp={"table":"Rides","columns":["RideId","CreatedBy","timestamp"],"where":"RideId='"+str(rideId)+"'"}
+            inp={"table":"RIDES","columns":["RideId","CreatedBy","timestamp"],"where":"RideId='"+str(rideId)+"'"}
             send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
             res=send.content
-        inp={"table":"Rides","type":"insert","columns":["RideId","CreatedBy","Timestamp","Source","Destination"],"data":[str(rideId),json["created_by"],json["timestamp"],json["source"],json["destination"]]}
+        inp={"table":"RIDES","type":"insert","columns":["RideId","CreatedBy","Timestamp","Source","Destination"],"data":[str(rideId),json["created_by"],json["timestamp"],json["source"],json["destination"]]}
         send=requests.post('http://52.73.190.55/api/v1/db/write',json=inp)
         ret=send.json()
-        inp={"table":"Users","type":"insert","columns":["RideId","username"],"data":[str(rideId),json["created_by"]]}
+        inp={"table":"USERS","type":"insert","columns":["RideId","username"],"data":[str(rideId),json["created_by"]]}
         send=requests.post('http://52.73.190.55/api/v1/db/write',json=inp)
         ret=send.json()
         return Response("Ride created",status=201,mimetype="application/text")
@@ -118,7 +118,7 @@ def list_rides():
     if(source=="" or destination=="" or int(source)<1 or int(source)>198 or int(destination)<1 or int(destination)>198 ):
         return Response("Wrong/Empty src or dest",status=400,mimetype="application/text")
     
-    inp={"table":"Rides","columns":["RideId","CreatedBy","timestamp"],"where":"source='"+source+"' AND destination='"+destination+"'"}
+    inp={"table":"RIDES","columns":["RideId","CreatedBy","timestamp"],"where":"source='"+source+"' AND destination='"+destination+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     res=send.content
     res=eval(res)
@@ -145,7 +145,7 @@ def list_rides():
 def details_ride(rideId):
 
     
-    inp={"table":"Rides","columns":["RideId"],"where":"RideId='"+rideId+"'"}
+    inp={"table":"RIDES","columns":["RideId"],"where":"RideId='"+rideId+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     res=send.content
     res=eval(res)
@@ -159,12 +159,12 @@ def details_ride(rideId):
     if flag==0:
         return Response("No match found",status=204,mimetype="application/text")
     else:
-        inp={"table":"Rides","columns":["RideId","CreatedBy","Timestamp","source","destination"],"where":"RideId='"+str(rideId)+"'"}
+        inp={"table":"RIDES","columns":["RideId","CreatedBy","Timestamp","source","destination"],"where":"RideId='"+str(rideId)+"'"}
         send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
         res=send.content
         res=eval(res)
 
-        inp={"table":"users","columns":["username"],"where":"RideId='"+str(rideId)+"'"}
+        inp={"table":"USERS","columns":["username"],"where":"RideId='"+str(rideId)+"'"}
         send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
         riders=send.content
         riders=eval(riders)
@@ -191,7 +191,7 @@ def join_ride(rideId):
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
-    inp={"table":"Rides","columns":["RideId"],"where":"RideId='"+rideId+"'"}
+    inp={"table":"RIDES","columns":["RideId"],"where":"RideId='"+rideId+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     ride=send.content
     ride=eval(ride)
@@ -199,7 +199,7 @@ def join_ride(rideId):
     if(len(ride)==0 or "username" not in json or len(credential)<1):
         return Response("Wrong rideId/username",status=204,mimetype="application/text")
     else:
-        inp={"table":"Users","type":"insert","columns":["RideId","username"],"data":[str(rideId),json["username"]]}
+        inp={"table":"USERS","type":"insert","columns":["RideId","username"],"data":[str(rideId),json["username"]]}
         send=requests.post('http://52.73.190.55/api/v1/db/write',json=inp)
         ret=send.json()
         #rides[rideId][4].append(json["username"])
@@ -208,7 +208,7 @@ def join_ride(rideId):
 @app.route('/api/v1/rides/<rideId>',methods=["DELETE"])
 def delete_ride(rideId):
 
-    inp={"table":"Rides","columns":["RideId"],"where":"RideId='"+rideId+"'"}
+    inp={"table":"RIDES","columns":["RideId"],"where":"RideId='"+rideId+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     ride=send.content
     ride=eval(ride)
@@ -216,7 +216,7 @@ def delete_ride(rideId):
     #if(len(ride)==0):
     #    return Response("Wrong rideId",status=204,mimetype="application/text")
     #else:
-    inp={"table":"Rides","type":"delete","where":"RideId='"+str(rideId)+"'"}
+    inp={"table":"RIDES","type":"delete","where":"RideId='"+str(rideId)+"'"}
     send=requests.post('http://52.73.190.55/api/v1/db/write',json=inp)
     ret=send.json()
     return Response("Deleted ride",status=200,mimetype="application/text")
