@@ -5,8 +5,6 @@ import ast
 from datetime import datetime
 from random import randint
 
-db = pymysql.connect("localhost", "user", "123", "CLOUD")
-
 app = Flask(__name__)
 
 def is_sha1(maybe_sha):
@@ -19,9 +17,6 @@ def is_sha1(maybe_sha):
     return True
 
 # def wrong(timestamp):
-@app.route('/',methods=["GET"])
-def hi():
-	return "hi"
 
 @app.route('/api/v1')
 def start():
@@ -114,19 +109,18 @@ def list_rides():
     
     source = request.args.get("source")
     destination = request.args.get("destination")
-
     if(source=="" or destination=="" or int(source)<1 or int(source)>198 or int(destination)<1 or int(destination)>198 ):
         return Response("Wrong/Empty src or dest",status=400,mimetype="application/text")
     
-    inp={"table":"RIDES","columns":["RIDEID","CREATEDBY","TIMESTAMPS"],"where":"SOURCE='"+source+"' AND DESTINATION='"+destination+"'"}
+    inp={"table":"RIDES","columns":["RIDEID","CREATEDBY","TIMESTAMPS"],"where":"SOURCE="+source+" AND DESTINATION="+destination}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     res=send.content
     res=eval(res)
-
     result=[]
     
     for i in range(0,len(res)):
         datetimeObj = datetime.strptime(res[i][2], '%d-%m-%Y:%S-%M-%H')
+        #return str(datetimeObj)+" "+str(datetime.now())
         if datetimeObj>datetime.now():
             #result.append(res[i])
             temp = {}
@@ -134,8 +128,6 @@ def list_rides():
             temp["USERNAME"] = res[i][1]
             temp["timestamp"] = res[i][2]
             result.append(temp)
-        
-
     if(len(result)==0):
         return Response("No match found",status=204,mimetype="application/text")
     else:
@@ -223,6 +215,8 @@ def delete_ride(rideId):
 
 @app.route('/api/v1/db/write',methods=["POST"])
 def write_db():
+    db = pymysql.connect("localhost", "user", "123", "CLOUD")
+
     json = request.get_json()
 
     cur = db.cursor()
@@ -248,11 +242,13 @@ def write_db():
     #cur.execute("INSERT INTO LOGIN(username,password) VALUES ('Test','123')")
     db.commit()
     cur.close()
-
+    db.close()
     return Response("1",status=200,mimetype="application/text")
 
 @app.route('/api/v1/db/read',methods=["POST"])
 def read_db():
+    db = pymysql.connect("localhost", "user", "123", "CLOUD")
+
     json = request.get_json()
 
     cur = db.cursor()
@@ -270,7 +266,7 @@ def read_db():
     #print(results)
     results = list(map(list,results))
     cur.close()
-
+    db.close()
     return Response(str(results),status=200,mimetype="application/text")
 
 if __name__ == '__main__':
