@@ -8,7 +8,6 @@ from random import randint
 app = Flask(__name__)
 config = {
         'user': 'root',
-        'password': '123',
         'host': 'db_user',
         'port': 3306,
         'database': 'CLOUD'
@@ -22,15 +21,44 @@ def is_sha1(maybe_sha):
         return False
     return True
 
-# def wrong(timestamp):
-@app.route('/',methods=["GET"])
+@app.route('/test',methods=["GET"])
 def test():
-    return "hi"
+    try:
+        f=open("../COUNT/count","r")
+        count_old=int(f.read())
+        count_new=count_old+1
+        f.close()
+    except:
+        count_old=0
+        count_new=1
+    f=open("../COUNT/count","w")
+    f.write(str(count_new))
+    f.close()
+    return str(count_old)
+
+
+@app.route('/inc',methods=["POST"])
+def inc():
+    try:
+        f=open("../COUNT/count","r")
+        count_old=int(f.read())
+        count_new=count_old+1
+        f.close()
+    except:
+        count_old=0
+        count_new=1
+    f=open("../COUNT/count","w")
+    f.write(str(count_new))
+    f.close()
+
 
 @app.route('/api/v1/users',methods=["GET"])
 def list_users():
+
+    requests.post('http://3.211.13.189/inc')
+
     inp={"table":"LOGIN","columns":["USERNAME"],"where":""}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
+    send=requests.post('http://3.211.13.189/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
 
@@ -49,11 +77,13 @@ def add_user():
     json = request.get_json()
     #print(json)
 
+    requests.post('http://3.211.13.189/inc')
+
     if("username" not in json or "password" not in json):
         return Response("Wrong request format",status=400,mimetype='application/text')
 
     inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":""}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
+    send=requests.post('http://3.211.13.189/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
 
@@ -66,20 +96,29 @@ def add_user():
 
     if(is_sha1(password)==False):
         return Response("Wrong password format", status=400, mimetype='application/text')  
-    
-    else:       
+
+    else:
         inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"data":[username,password],"type":"insert"}
-        send=requests.post('http://52.73.190.55:8080/api/v1/db/write',json=inp)
+        send=requests.post('http://3.211.13.189/api/v1/db/write',json=inp)
         ret=send.json()
         #print(ret)
         return Response("User added",status=201, mimetype='application/text')
+
+@app.route('/api/v1/users',methods=["CONNECT","PATCH","HEAD","OPTIONS","TRACE","POST"])
+def noneofabove():
+
+    requests.post('http://3.211.13.189/inc')
+
+    return Response("Method not allowed", status=405, mimetype='application/text')
 
 
 @app.route('/api/v1/users/<username>',methods=["DELETE"])
 def remove_user(username):
 
+    requests.post('http://3.211.13.189/inc')
+
     inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+username+"'"}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
+    send=requests.post('http://3.211.13.189/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
     #print(credential)
@@ -87,13 +126,13 @@ def remove_user(username):
         return Response("Username not found", status=400, mimetype='application/text')
     else:
         inp={"table":"LOGIN","type":"delete","where":"USERNAME='"+username+"'"}
-        send=requests.post('http://52.73.190.55:8080/api/v1/db/write',json=inp)
+        send=requests.post('http://3.211.13.189/api/v1/db/write',json=inp)
         ret=send.json()
         inp={"table":"USERS","type":"delete","where":"USERNAME='"+username+"'"}
-        send=requests.post('http://52.73.190.55:8000/api/v1/db/write',json=inp)
+        send=requests.post('http://52.202.21.91/api/v1/db/write',json=inp)
         ret=send.json()
         inp={"table":"RIDES","type":"delete","where":"CREATEDBY='"+username+"'"}
-        send=requests.post('http://52.73.190.55:8000/api/v1/db/write',json=inp)
+        send=requests.post('http://52.202.21.91/api/v1/db/write',json=inp)
         ret=send.json()
 
         return Response("Removed user %s !" %username, status=200, mimetype='application/text')
@@ -101,11 +140,40 @@ def remove_user(username):
 
 @app.route('/api/v1/db/clear',methods=["POST"])
 def clear_db():
+
     inp={"table":"LOGIN","type":"delete","where":""}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/write',json=inp)
+    send=requests.post('http://3.211.13.189/api/v1/db/write',json=inp)
     ret=send.json()
 
     return Response("Cleared database", status=200, mimetype='application/text')
+
+
+@app.route('/api/v1/_count',methods=["GET"])
+def get_count():
+
+    try:
+        f=open("../COUNT/count","r")
+        count_old=int(f.read())
+        f.close()
+    except:
+        count_old=0
+        return Response("Not able to open file")
+
+    result = []
+    result.append(count_old)
+    return jsonify(result)
+
+@app.route('/api/v1/_count',methods=["DELETE"])
+def reset_count():
+
+    try:
+        f=open("../COUNT/count","w")
+        f.write("0")
+        f.close()
+    except:
+        return Response("Not able to write file")
+
+    return Response("Count reseted", status=200, mimetype='application/text')
 
 
 """@app.route('/api/v1/rides',methods=["POST"])
