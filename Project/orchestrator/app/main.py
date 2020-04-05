@@ -67,28 +67,28 @@ def clear_db():
     res=write_rpc.call("clear")
     return Response(res,status=200,mimetype="application/text")
 
-@app.route('/api/v1/crash/master',methods=["GET"])
+@app.route('/api/v1/crash/master',methods=["POST"])
 def crash_master():
     client = docker.from_env()
     l=client.containers.list()
-    l.sort(key=lambda x:x.id,reverse=True)
+    l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True)
     res=[]
     for i in l:
       if i.name=='master':
-        res.append(i.id)
+        res.append(i.attrs['State']['Pid'])
         i.stop()
         break
     return jsonify(res)
 
-@app.route('/api/v1/crash/slave',methods=["GET"])
+@app.route('/api/v1/crash/slave',methods=["POST"])
 def crash_slave():
     client = docker.from_env()
     l=client.containers.list()
-    l.sort(key=lambda x:x.id,reverse=True)
+    l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True)
     res=[]
     for i in l:
       if i.name not in ('master','orchestrator','zookeeper','rabbitmq'):
-        res.append(i.id)
+        res.append(i.attrs['State']['Pid'])
         i.stop()
         break
     return jsonify(res)
@@ -97,11 +97,11 @@ def crash_slave():
 def worker_list():
     client = docker.from_env()
     l=client.containers.list()
-    l.sort(key=lambda x:x.id,reverse=True)
+    l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True)
     res=[]
     for i in l:
       if i.name not in ('master','orchestrator','zookeeper','rabbitmq'):
-        res.append(i.id)
+        res.append(i.attrs['State']['Pid'])
 
     return jsonify(res)
 
