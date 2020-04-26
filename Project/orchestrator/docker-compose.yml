@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  website:
+    build: .
+    container_name: orchestrator
+    hostname: orchestrator
+    image: orchestrator
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - '80:80'
+
+networks:
+  default:
+    external:
+      name: pronet
