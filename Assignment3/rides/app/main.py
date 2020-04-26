@@ -24,7 +24,7 @@ def is_sha1(maybe_sha):
     return True
 
 # def wrong(timestamp):
-@app.route('/')
+@app.route('/test')
 def test():
     return "hi"
 """
