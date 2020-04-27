@@ -3,7 +3,7 @@ docker run -d --rm --name zookeeper --hostname zookeeper --net pronet zookeeper
 
 if [ $# == 1 ]
 then
-   cd master && sudo docker-compose up  --build -d
+   cd master && sudo docker-compose up --build -d
    sleep 2
    sudo docker run --rm -d --env MYSQL_ROOT_PASSWORD=123 --name slave1 --hostname slave1 --net pronet master
    cd ../orchestrator && sudo docker-compose up  --build -d

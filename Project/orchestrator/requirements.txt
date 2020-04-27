@@ -4,3 +4,4 @@ requests
 docker
 pika
 kazoo
+APScheduler
