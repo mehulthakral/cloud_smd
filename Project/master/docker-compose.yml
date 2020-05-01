@@ -13,6 +13,7 @@ services:
     volumes:
       - ./database:/tmp/database
     command: mysqld --init-file="/tmp/database/Cloud.sql"
+
 networks:
   default:
     external:
