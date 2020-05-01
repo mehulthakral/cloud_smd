@@ -5,6 +5,13 @@ import ast
 from datetime import datetime
 from random import randint
 
+from kazoo.client import KazooClient
+from kazoo.client import KazooState
+
+import logging
+logging.basicConfig()
+logging.getLogger("kazoo.client").setLevel(logging.DEBUG)
+
 app = Flask(__name__)
 config = {
         'user': 'root',
@@ -13,6 +20,32 @@ config = {
         'port': 3306,
         'database': 'CLOUD'
     }
+
+print("hello")
+
+zk = KazooClient(hosts='zookeeper:2181')
+zk.start()
+
+if zk.connected:
+    print("zk connected")
+else:
+    print("Not able to connect to zk")
+
+def my_listener(state):
+    if state == KazooState.LOST:
+        # Register somewhere that the session was lost
+        print("zk lost")
+    elif state == KazooState.SUSPENDED:
+        # Handle being disconnected from Zookeeper
+        print("zk suspended")
+    else:
+        # Handle being connected/reconnected to Zookeeper
+        print("zk state changed")
+
+zk.add_listener(my_listener)
+
+zk.create("/znodes/node_", b"a value", ephemeral=True, sequence=True)    
+
 def is_sha1(maybe_sha):
     if len(maybe_sha) != 40:
         return False
@@ -298,4 +331,4 @@ def clear_db():
     return Response("Cleared database", status=200, mimetype='application/text')
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True, use_reloader=False)

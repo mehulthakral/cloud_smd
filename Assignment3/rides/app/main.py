@@ -196,7 +196,7 @@ def inc():
         res[0][1] = res[0][1] + 1     
         inp={"table":"COUNT_NO","type":"delete","where":""}
         send=requests.post('http://52.202.21.91/api/v1/db/write',json=inp) 
-        inp={"table":"COUNT_NO","type":"insert","columns":["RIDES","RIDEACCESS"],"data":[str(res[0][0]),str(res[0][1])]};
+        inp={"table":"COUNT_NO","type":"insert","columns":["RIDES","RIDEACCESS"],"data":[str(res[0][0]),str(res[0][1])]}
         send=requests.post('http://52.202.21.91/api/v1/db/write',json=inp)
 
 @app.route('/api/v1/_count',methods=["GET"])
@@ -216,7 +216,7 @@ def reset_count():
     res = eval(res)
     inp={"table":"COUNT_NO","type":"delete","where":""}
     send=requests.post('http://52.202.21.91/api/v1/db/write',json=inp)
-    inp={"table":"COUNT_NO","type":"insert","columns":["RIDES","RIDEACCESS"],"data":[str(res[0][0]),"0"]};
+    inp={"table":"COUNT_NO","type":"insert","columns":["RIDES","RIDEACCESS"],"data":[str(res[0][0]),"0"]}
     send=requests.post('http://52.202.21.91/api/v1/db/write',json=inp)
     return Response("Count reseted", status=200, mimetype='application/text') 
 

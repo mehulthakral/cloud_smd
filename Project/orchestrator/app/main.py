@@ -12,10 +12,17 @@ import subprocess
 import os
 
 from kazoo.client import KazooClient
+from kazoo.client import KazooState
 from kazoo.handlers.gevent import SequentialGeventHandler
 
 import logging
 logging.basicConfig()
+logging.getLogger("kazoo.client").setLevel(logging.DEBUG)
+
+import sys
+
+from kazoo.exceptions import ConnectionLossException
+from kazoo.exceptions import NoAuthException
 
 app = Flask(__name__)
 config = {
@@ -26,44 +33,87 @@ config = {
         'database': 'CLOUD'
     }
 
-zk = KazooClient(hosts='zookeeper:2181',handler=SequentialGeventHandler())
+# zk = KazooClient(hosts='zookeeper:2181',handler=SequentialGeventHandler())
 
-# returns immediately
-event = zk.start_async()
+# # returns immediately
+# event = zk.start_async()
 
-# Wait for 30 seconds and see if we're connected
-event.wait(timeout=30)
+# # Wait for 30 seconds and see if we're connected
+# event.wait(timeout=30)
 
-if not zk.connected:
-    # Not connected, stop trying to connect
-    zk.stop()
-    raise Exception("Unable to connect.")
+# if not zk.connected:
+#     # Not connected, stop trying to connect
+#     zk.stop()
+#     raise Exception("Unable to connect.")
 
-zk.ensure_path_async("/znodes")
+# zk.ensure_path_async("/znodes")
 
-# @zk.ChildrenWatch("/znodes")
-# def watch_children(children):
-#     print("Children are now: %s" % children)
-# Above function called immediately, and from then on
+# # @zk.ChildrenWatch("/znodes")
+# # def watch_children(children):
+# #     print("Children are now: %s" % children)
+# # Above function called immediately, and from then on
 
-zk.create_async("znodes/node", value=b" ", acl=None, ephemeral=True, sequence=True, makepath=False)
+# zk.create_async("znodes/node", value=b" ", acl=None, ephemeral=True, sequence=True, makepath=False)
 
-import sys
+# print("hello")
 
-from kazoo.exceptions import ConnectionLossException
-from kazoo.exceptions import NoAuthException
+# def my_callback(async_obj):
+#     try:
+#         children = async_obj.get()
+#         print(children)
+#     except (ConnectionLossException, NoAuthException):
+#         sys.exit(1)
 
-def my_callback(async_obj):
-    try:
-        children = async_obj.get()
-        print(children)
-    except (ConnectionLossException, NoAuthException):
-        sys.exit(1)
+# # Both these statements return immediately, the second sets a callback
+# # that will be run when get_children_async has its return value
+# async_obj = zk.get_children_async("/znodes")
+# async_obj.rawlink(my_callback)
 
-# Both these statements return immediately, the second sets a callback
-# that will be run when get_children_async has its return value
-async_obj = zk.get_children_async("/znodes")
-async_obj.rawlink(my_callback)
+zk = KazooClient(hosts='zookeeper:2181')
+zk.start()
+
+if zk.connected:
+    print("zk connected")
+else:
+    print("Not able to connect to zk")
+
+# if(zk.exists("/znodes")):
+#     zk.delete("/znodes",recursive=True)
+
+# print("All znodes deleted")
+
+# Ensure a path, create if necessary
+zk.ensure_path("/znodes")
+
+# Create a node with data
+# zk.create("/znodes/node_", b"a value", ephemeral=True, sequence=True)
+
+def my_listener(state):
+    if state == KazooState.LOST:
+        # Register somewhere that the session was lost
+        print("zk lost")
+    elif state == KazooState.SUSPENDED:
+        # Handle being disconnected from Zookeeper
+        print("zk suspended")
+    else:
+        # Handle being connected/reconnected to Zookeeper
+        print("zk state changed")
+
+zk.add_listener(my_listener)
+
+def my_func(event):
+    # check to see what the children are now
+    children = zk.get_children("/znodes")
+    print("There are %s children with names %s" % (len(children), children))
+
+# Call my_func when the children change
+children = zk.get_children("/znodes", watch=my_func)
+print("There are %s children with names %s" % (len(children), children))
+
+# if(zk.exists("/znodes/node_0000000000")):
+#     zk.delete("/znodes/node_0000000000")
+# else:
+#     print("/znodes/node_0000000000 doesn't exist")
 
 @app.route('/api/v1/inc',methods=["GET"])
 def inc():
@@ -333,4 +383,4 @@ def worker_list():
     return jsonify(res)
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True, use_reloader=False)
