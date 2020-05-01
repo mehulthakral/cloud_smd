@@ -103,6 +103,7 @@ zk.add_listener(my_listener)
 
 def my_func(event):
     # check to see what the children are now
+    print(event)
     children = zk.get_children("/znodes")
     print("There are %s children with names %s" % (len(children), children))
 

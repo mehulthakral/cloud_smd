@@ -46,8 +46,8 @@ def my_listener(state):
         print("zk state changed")
 
 zk.add_listener(my_listener)
-
-zk.create("/znodes/node_", b"a value", ephemeral=True, sequence=True)    
+zk.ensure_path("/znodes")
+zk.create("/znodes/node_", b"a value", ephemeral=True, sequence=True, makepath=True)    
 
 bashCommandName = 'hostname'
 output = subprocess.check_output(['bash','-c', bashCommandName]) 
