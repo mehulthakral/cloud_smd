@@ -7,92 +7,143 @@ from random import randint
 import pika
 import docker
 import uuid
-import atexit
+import subprocess
 
-from apscheduler.schedulers.background import BackgroundScheduler
+import os
+
+from kazoo.client import KazooClient
+from kazoo.handlers.gevent import SequentialGeventHandler
+
+import logging
+logging.basicConfig()
 
 app = Flask(__name__)
 config = {
         'user': 'root',
         'password': '123',
-        'host': 'orchestrator',
+        'host': 'db',
         'port': 3306,
         'database': 'CLOUD'
     }
-flag = 0
+
+zk = KazooClient(hosts='zookeeper:2181',handler=SequentialGeventHandler())
+
+# returns immediately
+event = zk.start_async()
+
+# Wait for 30 seconds and see if we're connected
+event.wait(timeout=30)
+
+if not zk.connected:
+    # Not connected, stop trying to connect
+    zk.stop()
+    raise Exception("Unable to connect.")
+
+zk.ensure_path_async("/znodes")
+
+# @zk.ChildrenWatch("/znodes")
+# def watch_children(children):
+#     print("Children are now: %s" % children)
+# Above function called immediately, and from then on
+
+zk.create_async("znodes/node", value=b" ", acl=None, ephemeral=True, sequence=True, makepath=False)
+
+import sys
+
+from kazoo.exceptions import ConnectionLossException
+from kazoo.exceptions import NoAuthException
+
+def my_callback(async_obj):
+    try:
+        children = async_obj.get()
+        print(children)
+    except (ConnectionLossException, NoAuthException):
+        sys.exit(1)
+
+# Both these statements return immediately, the second sets a callback
+# that will be run when get_children_async has its return value
+async_obj = zk.get_children_async("/znodes")
+async_obj.rawlink(my_callback)
 
 @app.route('/api/v1/inc',methods=["GET"])
 def inc():
+
     inp={"table":"COUNT_NO","columns":["COUNTS"],"where":""}
     send=requests.post('http://localhost/api/v1/db_count/read',json=inp)
     res = send.content      
     res = eval(res)      
-    res[0][0] = res[0][0] + 1     
+    count = int(res[0][0]) + 1     
     inp={"table":"COUNT_NO","type":"delete","where":""}
     send=requests.post('http://localhost/api/v1/db_count/write',json=inp) 
-    inp={"table":"COUNT_NO","type":"insert","columns":["COUNTS"],"data":[res[0][0]]}
+    inp={"table":"COUNT_NO","type":"insert","columns":["COUNTS"],"data":[count]}
     send=requests.post('http://localhost/api/v1/db_count/write',json=inp)
-    # try:
-    #     f=open("../COUNT/count","r")
-    #     count_old=int(f.read())
-    #     count_new=count_old+1
-    #     f.close()
-    # except:
-    #     print("Problem in opening file")
-    #     count_old=0
-    #     count_new=1
-    # f=open("../COUNT/count","w")
-    # f.write(str(count_new))
-    # f.close()
+    return Response("Incremented",status=200,mimetype="application/text")
 
 @app.route('/api/v1/get_count',methods=["GET"])
 def get_count():
     
     inp={"table":"COUNT_NO","columns":["COUNTS"],"where":""}
     send=requests.post('http://localhost/api/v1/db_count/read',json=inp)
-    res = send.content    
+    res = send.content   
     res = eval(res)
-    return res[0][0] 
-    # try:
-    #     f=open("../COUNT/count","r")
-    #     count_old=int(f.read())
-    #     f.close()
-    # except:
-    #     count_old=0
-    #     print("Not able to open file")
+    # return int(res[0][0])
+    return Response(str(res[0][0]),status=200,mimetype="application/text") 
 
-    # return count_old
-
-@app.route('/api/v1/reset',methods=["GET"])
+@app.route('/api/v1/reset_count',methods=["GET"])
 def reset_count(): 
 
     inp={"table":"COUNT_NO","type":"delete","where":""}
     send=requests.post('http://localhost/api/v1/db_count/write',json=inp)
     inp={"table":"COUNT_NO","type":"insert","columns":["COUNTS"],"data":[0]}
     send=requests.post('http://localhost/api/v1/db_count/write',json=inp)
+    return Response("Count reseted",status=200,mimetype="application/text")
 
-    # try:
-    #     f=open("../COUNT/count","w")
-    #     f.write("0")
-    #     f.close()
-    # except:
-    #     # return Response("Not able to write file")
-    #     print("Not able to write file")
+@app.route('/api/v1/change',methods=["GET"])
+def change_flag():
+     
+    inp={"table":"FLAGS","type":"delete","where":""}
+    send=requests.post('http://localhost/api/v1/db_count/write',json=inp) 
+    inp={"table":"FLAGS","type":"insert","columns":["FLAG"],"data":[1]}
+    send=requests.post('http://localhost/api/v1/db_count/write',json=inp)
+    return Response("Changed flag",status=200,mimetype="application/text")
 
-    # return Response("Count reseted", status=200, mimetype='application/text')
+@app.route('/api/v1/get_flag',methods=["GET"])
+def get_flag():
+    
+    inp={"table":"FLAGS","columns":["FLAG"],"where":""}
+    send=requests.post('http://localhost/api/v1/db_count/read',json=inp)
+    res = send.content    
+    res = eval(res)
+    # return int(res[0][0])
+    return Response(str(res[0][0]),status=200,mimetype="application/text") 
 
-@app.route('/api/v1/create',methods=["GET"])
+@app.route('/api/v1/reset_flag',methods=["GET"])
+def reset_flag(): 
+
+    inp={"table":"FLAGS","type":"delete","where":""}
+    send=requests.post('http://localhost/api/v1/db_count/write',json=inp)
+    inp={"table":"FLAGS","type":"insert","columns":["FLAG"],"data":[0]}
+    send=requests.post('http://localhost/api/v1/db_count/write',json=inp)
+    return Response("Flag reseted",status=200,mimetype="application/text")
+
+@app.route('/api/v1/create/<num>',methods=["GET"])
 def create_slave(num):
     client = docker.from_env()
-    container = client.containers.run('master',name="slave"+str(num),hostname="slave"+str(num),environment=["MYSQL_ROOT_PASSWORD=123"],network="pronet",detach=True)
+    container = client.containers.run('master','',name="slave"+str(num),hostname="slave"+str(num),environment=["MYSQL_ROOT_PASSWORD=123"],network="pronet",detach=True)
+    return Response("Slave created",status=200,mimetype="application/text")
+
 
 @app.route('/api/v1/check',methods=["GET"])
 def check():
-    count = get_count()
-    reset_count()
+    print("check called")
+    send=requests.get('http://localhost/api/v1/get_count')
+    res = eval(send.content)   
+    # print(res)
+    count = int(res)
+    send=requests.get('http://localhost/api/v1/reset_count')
     send=requests.get('http://localhost/api/v1/worker/list')
     credential = send.content
-    num_slaves = len(eval(credential)[0])
+    num_slaves = len(eval(credential))
     if(0<=count and count<=20):
         if(num_slaves>1):
             for x in range(num_slaves-1):
@@ -114,6 +165,7 @@ def check():
         elif(num_slaves<3):
             for x in range(3-num_slaves):
                 create_slave(num_slaves+x+1)
+    return Response("Scaled successfully",status=200,mimetype="application/text")
     
 @app.route('/api/v1/db_count/write',methods=["POST"])
 def write_db_count():
@@ -126,11 +178,11 @@ def write_db_count():
     if(json["type"]=="insert"):
 
         columns = json["columns"][0]
-        data = "'"+json["data"][0]+"'"
+        data = str(json["data"][0])
 
-        for iter in range(1,len(json["columns"])):
-            columns = columns + "," + json["columns"][iter]
-            data = data + ",'" + json["data"][iter]+"'"
+        # for iter in range(1,len(json["columns"])):
+        #     columns = columns + "," + json["columns"][iter]
+        #     data = data + ",'" + json["data"][iter]+"'"
 
         sql = "INSERT INTO "+json["table"]+"("+columns+") VALUES ("+data+")"
     elif(json["type"]=="delete"):
@@ -165,7 +217,7 @@ def read_db_count():
         sql = "SELECT "+columns+" FROM "+json["table"]
     cur.execute(sql)
     results = cur.fetchall()
-    #print(results)
+    print(results)
     results = list(map(list,results))
     cur.close()
     db.close()
@@ -219,21 +271,22 @@ def write_db():
 
 @app.route('/api/v1/db/read',methods=["POST"])
 def read_db():
-
-    inc()
-    global flag
+    
+    send=requests.get('http://localhost/api/v1/inc')
+    send=requests.get('http://localhost/api/v1/get_flag')
+    flag = int(eval(send.content))
+    print(flag)
     if(flag==0):
-        flag = 1
-        scheduler = BackgroundScheduler()
-        scheduler.add_job(func=check, trigger="interval", seconds=120)
-        scheduler.start()
-
-        # Shut down the scheduler when exiting the app
-        atexit.register(lambda: scheduler.shutdown())
-
-    write_rpc=RPC("readQ")
-    res=write_rpc.call(request)
-    return Response(res,status=200,mimetype="application/text")
+        send=requests.get('http://localhost/api/v1/change')
+        print("first time")
+        # os.system('python scale.py')
+        p = subprocess.Popen(['python', 'auto_scale.py'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        
+    # scheduler.print_jobs()
+    # write_rpc=RPC("readQ")
+    # res=write_rpc.call(request)
+    # return Response(res,status=200,mimetype="application/text")
+    return Response("Successfully read",status=200,mimetype="application/text")
 
 @app.route('/api/v1/db/clear',methods=["POST"])
 def clear_db():
@@ -274,7 +327,7 @@ def worker_list():
     l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True)
     res=[]
     for i in l:
-      if i.name not in ('master','orchestrator','zookeeper','rabbitmq'):
+      if i.name not in ('master','orchestrator','zookeeper','rabbitmq','orchestrator_db_1'):
         res.append(i.attrs['State']['Pid'])
 
     return jsonify(res)
