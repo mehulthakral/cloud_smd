@@ -82,7 +82,7 @@ class RPC(object):
         self.response = None
         self.corr_id = str(uuid.uuid4())
         self.channel.basic_publish(
-            exchange='',
+            exchange="my_exchange", options={type:'fanout'}
             routing_key=self.request_queue,
             properties=pika.BasicProperties(
                 reply_to="returnQ2",
@@ -166,7 +166,7 @@ def on_request_master(ch, method, props, body):
     #channel.queue_declare(queue="syncQ", exclusive=True)
     #channel.basic_publish(exchange='', routing_key=request_queue, body=body)
 
-    ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
+    ch.basic_publish(exchange="my_exchange", routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def on_request_slave_read(ch, method, props, body):
