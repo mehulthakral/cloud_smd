@@ -82,7 +82,7 @@ class RPC(object):
         self.response = None
         self.corr_id = str(uuid.uuid4())
         self.channel.basic_publish(
-            exchange="my_exchange", options={type:'fanout'}
+            exchange="my_exchange", options={type:'fanout'},
             routing_key=self.request_queue,
             properties=pika.BasicProperties(
                 reply_to="returnQ2",
