@@ -316,7 +316,8 @@ def test():
 @app.route('/api/v1/db/write',methods=["POST"])
 def write_db():
     write_rpc=RPC("writeQ")
-    res=write_rpc.call(request)
+    res=write_rpc.call(request.get_json())
+    write_rpc.connection.close()
     return Response(res,status=200,mimetype="application/text")
 
 
@@ -334,15 +335,17 @@ def read_db():
         p = subprocess.Popen(['python', 'auto_scale.py'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         
     # scheduler.print_jobs()
-    # write_rpc=RPC("readQ")
-    # res=write_rpc.call(request)
+    # read_rpc=RPC("readQ")
+    # res=read_rpc.call(request.get_json())
+    # read_rpc.connection.close()
     # return Response(res,status=200,mimetype="application/text")
     return Response("Successfully read",status=200,mimetype="application/text")
 
 @app.route('/api/v1/db/clear',methods=["POST"])
 def clear_db():
-    write_rpc=RPC("writeQ")
-    res=write_rpc.call("clear")
+    clear_rpc=RPC("writeQ")
+    res=clear_rpc.call("clear")
+    clear_rpc.connection.close()
     return Response(res,status=200,mimetype="application/text")
 
 @app.route('/api/v1/crash/master',methods=["POST"])
