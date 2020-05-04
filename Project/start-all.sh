@@ -9,7 +9,7 @@ then
    # sudo docker run --rm -d --env MYSQL_ROOT_PASSWORD=123 --name master --hostname master --net pronet master 
    sleep 2
    # sudo docker exec -it master python3 /app/main.py
-   # sudo docker run --rm -d --env MYSQL_ROOT_PASSWORD=123 --name slave1 --hostname slave1 --net pronet master
+   sudo docker run --rm -d --env MYSQL_ROOT_PASSWORD=123 --name slave1 --hostname slave1 --net pronet master
    # cd master && sudo docker-compose build -d
    # sleep 2
    # sudo docker exec -it slave1 python3 /app/main.py
