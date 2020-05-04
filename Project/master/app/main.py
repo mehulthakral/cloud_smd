@@ -81,14 +81,7 @@ class RPC(object):
     def call(self, n):
         self.response = None
         self.corr_id = str(uuid.uuid4())
-        self.channel.basic_publish(
-            exchange="my_exchange", options={type:'fanout'},
-            routing_key=self.request_queue,
-            properties=pika.BasicProperties(
-                reply_to="returnQ2",
-                correlation_id=self.corr_id,
-            ),
-            body=str(n))
+        self.channel.basic_publish(exchange="my_exchange", options={type:'fanout'}, routing_key=self.request_queue, properties=pika.BasicProperties(reply_to="returnQ2",correlation_id=self.corr_id,),body=str(n))
         while self.response is None:
             self.connection.process_data_events()
         return self.response
