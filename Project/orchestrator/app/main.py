@@ -306,11 +306,11 @@ def read_db():
         print("first time")
         p = subprocess.Popen(['python', 'auto_scale.py'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         
-    # read_rpc=RPC("readQ")
-    # res=read_rpc.call(request.get_json())
-    # read_rpc.connection.close()
-    # return Response(res,status=200,mimetype="application/text")
-    return Response("Successfully read",status=200,mimetype="application/text")
+    read_rpc=RPC("readQ")
+    res=read_rpc.call(request.get_json())
+    read_rpc.connection.close()
+    return Response(res,status=200,mimetype="application/text")
+    #return Response("Successfully read",status=200,mimetype="application/text")
 
 @app.route('/api/v1/db/clear',methods=["POST"])
 def clear_db():

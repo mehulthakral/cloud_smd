@@ -1,7 +1,7 @@
 sudo docker run -d --rm --name rabbitmq --hostname rabbitmq --net pronet -p 5672:5672 -p 15672:15672 rabbitmq
 sudo docker run -d --rm --name zookeeper --hostname zookeeper --net pronet -p 2181:2181 zookeeper
 
-sleep 6
+sleep 10
 if [ $# == 1 ]
 then
    cd orchestrator && sudo docker-compose up  --build -d
