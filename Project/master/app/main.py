@@ -81,6 +81,7 @@ class RPC(object):
     def call(self, n):
         self.response = None
         self.corr_id = str(uuid.uuid4())
+        self.channel.exchange_declare(exchange='my_exchange', exchange_type='fannout')
         self.channel.basic_publish(exchange="my_exchange", routing_key=self.request_queue, properties=pika.BasicProperties(reply_to="returnQ2",correlation_id=self.corr_id,),body=str(n))
         while self.response is None:
             self.connection.process_data_events()
@@ -158,7 +159,7 @@ def on_request_master(ch, method, props, body):
     sync_rpc.connection.close()
     #channel.queue_declare(queue="syncQ", exclusive=True)
     #channel.basic_publish(exchange='', routing_key=request_queue, body=body)
-
+    ch.exchange_declare(exchange='my_exchange', exchange_type='fannout')
     ch.basic_publish(exchange="my_exchange", routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -183,7 +184,7 @@ def on_request_slave_sync(ch, method, props, body):
     ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
-channel.exchange_declare(exchange='my_exchange', exchange_type='fannout')
+
 if output == 'master':
     #print('master')
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
