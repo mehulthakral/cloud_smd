@@ -8,21 +8,18 @@ import pika
 import docker
 import uuid
 import subprocess
+import random
 
 import os
 
 from kazoo.client import KazooClient
 from kazoo.client import KazooState
-from kazoo.handlers.gevent import SequentialGeventHandler
 
 import logging
 logging.basicConfig()
 logging.getLogger("kazoo.client").setLevel(logging.DEBUG)
 
 import sys
-
-from kazoo.exceptions import ConnectionLossException
-from kazoo.exceptions import NoAuthException
 
 app = Flask(__name__)
 config = {
@@ -33,42 +30,6 @@ config = {
         'database': 'CLOUD'
     }
 
-# zk = KazooClient(hosts='zookeeper:2181',handler=SequentialGeventHandler())
-
-# # returns immediately
-# event = zk.start_async()
-
-# # Wait for 30 seconds and see if we're connected
-# event.wait(timeout=30)
-
-# if not zk.connected:
-#     # Not connected, stop trying to connect
-#     zk.stop()
-#     raise Exception("Unable to connect.")
-
-# zk.ensure_path_async("/znodes")
-
-# # @zk.ChildrenWatch("/znodes")
-# # def watch_children(children):
-# #     print("Children are now: %s" % children)
-# # Above function called immediately, and from then on
-
-# zk.create_async("znodes/node", value=b" ", acl=None, ephemeral=True, sequence=True, makepath=False)
-
-# print("hello")
-
-# def my_callback(async_obj):
-#     try:
-#         children = async_obj.get()
-#         print(children)
-#     except (ConnectionLossException, NoAuthException):
-#         sys.exit(1)
-
-# # Both these statements return immediately, the second sets a callback
-# # that will be run when get_children_async has its return value
-# async_obj = zk.get_children_async("/znodes")
-# async_obj.rawlink(my_callback)
-
 zk = KazooClient(hosts='zookeeper:2181')
 zk.start()
 
@@ -77,16 +38,13 @@ if zk.connected:
 else:
     print("Not able to connect to zk")
 
-# if(zk.exists("/znodes")):
-#     zk.delete("/znodes",recursive=True)
+if(zk.exists("/znodes")):
+    zk.delete("/znodes",recursive=True)
 
-# print("All znodes deleted")
+print("All znodes deleted")
 
 # Ensure a path, create if necessary
 zk.ensure_path("/znodes")
-
-# Create a node with data
-# zk.create("/znodes/node_", b"a value", ephemeral=True, sequence=True)
 
 def my_listener(state):
     if state == KazooState.LOST:
@@ -101,20 +59,22 @@ def my_listener(state):
 
 zk.add_listener(my_listener)
 
-def my_func(event):
-    # check to see what the children are now
-    print(event)
-    children = zk.get_children("/znodes")
-    print("There are %s children with names %s" % (len(children), children))
+@zk.ChildrenWatch("/znodes",send_event=True)
+def watch_children(children,event):
+    # print(event)
+    print("Children are now: %s" % children)
 
-# Call my_func when the children change
-children = zk.get_children("/znodes", watch=my_func)
-print("There are %s children with names %s" % (len(children), children))
+    client = docker.from_env()
+    l=client.containers.list(all=True,filters={'exited':137})
+    print(l)
+    if(len(l)==1):
+        print("Slave crashed")
+        l[0].remove()
+        send=requests.get('http://localhost/api/v1/create/'+str(random.randrange(20, 1000, 1)))
+    elif(len(l)>1):
+        print("Please remove exited containers")
 
-# if(zk.exists("/znodes/node_0000000000")):
-#     zk.delete("/znodes/node_0000000000")
-# else:
-#     print("/znodes/node_0000000000 doesn't exist")
+# Above function called immediately, and from then on
 
 @app.route('/api/v1/inc',methods=["GET"])
 def inc():
@@ -183,6 +143,19 @@ def create_slave(num):
     container = client.containers.run('master','',name="slave"+str(num),hostname="slave"+str(num),environment=["MYSQL_ROOT_PASSWORD=123"],network="pronet",detach=True)
     return Response("Slave created",status=200,mimetype="application/text")
 
+@app.route('/api/v1/stop/slave',methods=["POST"])
+def stop_slave():
+    client = docker.from_env()
+    l=client.containers.list()
+    l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True)
+    res=[]
+    for i in l:
+      if i.name not in ('master','orchestrator','zookeeper','rabbitmq'):
+        res.append(i.attrs['State']['Pid'])
+        i.stop()
+        i.remove()
+        break
+    return jsonify(res)
 
 @app.route('/api/v1/check',methods=["GET"])
 def check():
@@ -268,7 +241,7 @@ def read_db_count():
         sql = "SELECT "+columns+" FROM "+json["table"]
     cur.execute(sql)
     results = cur.fetchall()
-    print(results)
+    # print(results)
     results = list(map(list,results))
     cur.close()
     db.close()
@@ -327,14 +300,12 @@ def read_db():
     send=requests.get('http://localhost/api/v1/inc')
     send=requests.get('http://localhost/api/v1/get_flag')
     flag = int(eval(send.content))
-    print(flag)
+    # print(flag)
     if(flag==0):
         send=requests.get('http://localhost/api/v1/change')
         print("first time")
-        # os.system('python scale.py')
         p = subprocess.Popen(['python', 'auto_scale.py'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         
-    # scheduler.print_jobs()
     # read_rpc=RPC("readQ")
     # res=read_rpc.call(request.get_json())
     # read_rpc.connection.close()
@@ -370,7 +341,7 @@ def crash_slave():
     for i in l:
       if i.name not in ('master','orchestrator','zookeeper','rabbitmq'):
         res.append(i.attrs['State']['Pid'])
-        i.stop()
+        i.kill()
         break
     return jsonify(res)
 

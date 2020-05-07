@@ -25,7 +25,7 @@ def my_check():
     if(0<=count and count<=20):
         if(num_slaves>1):
             for x in range(num_slaves-1):
-                send=requests.post('http://localhost/api/v1/crash/slave')
+                send=requests.post('http://localhost/api/v1/stop/slave')
         elif(num_slaves<1):
             for x in range(1-num_slaves):
                 # create_slave(num_slaves+x+1)
@@ -33,7 +33,7 @@ def my_check():
     elif(21<=count and count<=40):
         if(num_slaves>2):
             for x in range(num_slaves-2):
-                send=requests.post('http://localhost/api/v1/crash/slave')
+                send=requests.post('http://localhost/api/v1/stop/slave')
         elif(num_slaves<2):
             for x in range(2-num_slaves):
                 # create_slave(num_slaves+x+1)
@@ -41,19 +41,12 @@ def my_check():
     elif(41<=count and count<=60):
         if(num_slaves>3):
             for x in range(num_slaves-3):
-                send=requests.post('http://localhost/api/v1/crash/slave')
+                send=requests.post('http://localhost/api/v1/stop/slave')
         elif(num_slaves<3):
             for x in range(3-num_slaves):
                 # create_slave(num_slaves+x+1)
                 send=requests.get('http://localhost/api/v1/create/'+str(random.randrange(20, 1000, 1)))
-
-# def start():
-#     scheduler = BackgroundScheduler(daemon=True)
-#     scheduler.add_job(func=my_check, trigger="interval", minutes=2)
-#     scheduler.start()
-#     scheduler.print_jobs()
-#     # Shut down the scheduler when exiting the app
-#     # atexit.register(lambda: scheduler.shutdown())
+                
     
 if __name__ == '__main__':
     scheduler = BackgroundScheduler()
