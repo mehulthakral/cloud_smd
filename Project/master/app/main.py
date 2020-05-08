@@ -59,7 +59,7 @@ print(output)
 #output = 'slave1'
 
 config = {'user': 'root','password': '123','host': output,'port': 3306,'database': 'CLOUD'} 
-
+"""
 class RPC(object):
     def __init__(self,request_queue):
         self.connection = pika.BlockingConnection(
@@ -81,12 +81,12 @@ class RPC(object):
     def call(self, n):
         self.response = None
         self.corr_id = str(uuid.uuid4())
-        #self.channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
-        self.channel.basic_publish(exchange='', routing_key=self.request_queue, properties=pika.BasicProperties(reply_to="returnQ2",correlation_id=self.corr_id,),body=str(n))
+        self.channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
+        self.channel.basic_publish(exchange='my_exchange', routing_key=self.request_queue, properties=pika.BasicProperties(reply_to="returnQ2",correlation_id=self.corr_id,),body=str(n))
         while self.response is None:
             self.connection.process_data_events()
         return self.response
-
+"""
 def write_db(json):
 
     db = pymysql.connect(**config)
@@ -147,13 +147,20 @@ def read_db(json):
 
 def on_request_master(ch, method, props, body):
     print(body)
-    body=eval(body)
-    if body == 'clear':
+    message=eval(body)
+    if message == 'clear':
         data=clear_db()
     else:
-        data=write_db(body)
+        data=write_db(message)
     
     print(data)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+    channel = connection.channel()
+    channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
+    channel.basic_publish(exchange='my_exchange', routing_key='', body=message)
+    print(" [x] Sent %r" % message)
+    connection.close()
+    """
     sync_rpc=RPC("syncQ")
     sync_rpc.call(body)
     sync_rpc.connection.close()
@@ -161,6 +168,7 @@ def on_request_master(ch, method, props, body):
     #channel.queue_declare(queue="syncQ", exclusive=True)
     #channel.basic_publish(exchange='', routing_key=request_queue, body=body)
     #ch.exchange_declare(exchange='my_exchange', exchange_type='fanout')
+    """
     ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -182,8 +190,8 @@ def on_request_slave_sync(ch, method, props, body):
     data=write_db(body)
     print(data)
     #ch.exchange_declare(exchange='my_exchange', exchange_type='fanout')
-    ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
-    ch.basic_ack(delivery_tag=method.delivery_tag)
+    #ch.basic_publish(exchange='my_exchange', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
+    #ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
 if output == 'master':
@@ -202,11 +210,14 @@ else :
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
     channel = connection.channel()
     channel.queue_declare(queue='readQ')
+    channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
     channel.queue_declare(queue='syncQ')
+    channel.queue_bind(exchange='my_exchange', queue='syncQ')
 
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue='readQ', on_message_callback=on_request_slave_read)
-    channel.basic_consume(queue='syncQ', on_message_callback=on_request_slave_sync)
+    channel.basic_consume(queue='syncQ', on_message_callback=on_request_slave_sync, auto_ack=True)
+
 
     print("Awaiting requests")
     channel.start_consuming()
