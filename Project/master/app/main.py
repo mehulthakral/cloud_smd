@@ -157,7 +157,7 @@ def on_request_master(ch, method, props, body):
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
     channel = connection.channel()
     channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
-    channel.basic_publish(exchange='my_exchange', routing_key='', body=message)
+    channel.basic_publish(exchange='my_exchange', routing_key='', body=body)
     print(" [x] Sent %r" % message)
     connection.close()
     """
@@ -211,12 +211,15 @@ else :
     channel = connection.channel()
     channel.queue_declare(queue='readQ')
     channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
-    channel.queue_declare(queue='syncQ')
-    channel.queue_bind(exchange='my_exchange', queue='syncQ')
+    #channel.queue_declare(queue='syncQ')
+    result = channel.queue_declare(queue='', exclusive=True)
+    queue_name = result.method.queue
+    #channel.queue_bind(exchange='my_exchange', queue='syncQ')
+    channel.queue_bind(exchange='my_exchange', queue=queue_name)
 
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue='readQ', on_message_callback=on_request_slave_read)
-    channel.basic_consume(queue='syncQ', on_message_callback=on_request_slave_sync, auto_ack=True)
+    channel.basic_consume(queue=queue_name, on_message_callback=on_request_slave_sync, auto_ack=True)
 
 
     print("Awaiting requests")
