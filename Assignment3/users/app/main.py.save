@@ -4,11 +4,11 @@ import requests
 import ast
 from datetime import datetime
 from random import randint
-import json
 
 app = Flask(__name__)
 config = {
         'user': 'root',
+        'password':'123',
         'host': 'db_user',
         'port': 3306,
         'database': 'CLOUD'
@@ -22,9 +22,6 @@ def is_sha1(maybe_sha):
         return False
     return True
 
-@app.route('/',methods=["GET"])
-def health():
-    return Response("OK",status=200, mimetype='application/text')
 @app.route('/test',methods=["GET"])
 def test():
     try:
@@ -43,7 +40,7 @@ def test():
 
 @app.route('/inc',methods=["POST"])
 def inc():
-    """try:
+    try:
         f=open("../COUNT/count","r")
         count_old=int(f.read())
         count_new=count_old+1
@@ -53,24 +50,21 @@ def inc():
         count_new=1
     f=open("../COUNT/count","w")
     f.write(str(count_new))
-    f.close()"""
+    f.close()
 
-    inp={"table":"COUNT_NO","columns":["COUNTS"],"where":""}
-    send=requests.post('http://localhost/api/v1/db/read',json=inp)
-    res = send.content      
-    res = eval(res)      
-    count = int(res[0][0]) + 1     
-    inp={"table":"COUNT_NO","type":"delete","where":""}
-    send=requests.post('http://localhost/api/v1/db/write',json=inp) 
-    inp={"table":"COUNT_NO","type":"insert","columns":["COUNTS"],"data":[count]}
-    send=requests.post('http://localhost/api/v1/db/write',json=inp)
-    return Response("Incremented",status=200,mimetype="application/text")
+
+@app.route('/api/vi/users',methods=[""])
+def noneofabove():
+
+    requests.post('http://3.211.13.189/inc')
+
+    return Response("Noneofabove got executed", status=200, mimetype='application/text')
 
 
 @app.route('/api/v1/users',methods=["GET"])
 def list_users():
 
-    requests.post('http://localhost/inc')
+    requests.post('http://3.211.13.189/inc')
 
     inp={"table":"LOGIN","columns":["USERNAME"],"where":""}
     send=requests.post('http://3.211.13.189/api/v1/db/read',json=inp)
@@ -84,7 +78,7 @@ def list_users():
         for i in range(0,len(credential)):
             result.append(credential[i][0])
         return jsonify(result)
-    return 'OK'
+
 
 @app.route('/api/v1/users',methods=["PUT"])
 def add_user():
@@ -92,7 +86,7 @@ def add_user():
     json = request.get_json()
     #print(json)
 
-    requests.post('http://localhost/inc')
+    requests.post('http://3.211.13.189/inc')
 
     if("username" not in json or "password" not in json):
         return Response("Wrong request format",status=400,mimetype='application/text')
@@ -119,18 +113,11 @@ def add_user():
         #print(ret)
         return Response("User added",status=201, mimetype='application/text')
 
-@app.route('/api/v1/users',methods=["CONNECT","PATCH","HEAD","OPTIONS","TRACE","POST"])
-def noneofabove():
-
-    requests.post('http://localhost/inc')
-
-    return Response("Method not allowed", status=405, mimetype='application/text')
-
 
 @app.route('/api/v1/users/<username>',methods=["DELETE"])
 def remove_user(username):
 
-    requests.post('http://localhost/inc')
+    requests.post('http://3.211.13.189/inc')
 
     inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+username+"'"}
     send=requests.post('http://3.211.13.189/api/v1/db/read',json=inp)
@@ -152,56 +139,48 @@ def remove_user(username):
 
         return Response("Removed user %s !" %username, status=200, mimetype='application/text')
 
+@app.route('/api/vi/users')
+def noneofabove():
+
+    requests.post('http://3.211.13.189/inc')
+
+    return Response("Noneofabove got executed", status=200, mimetype='application/text')
+
 
 @app.route('/api/v1/db/clear',methods=["POST"])
 def clear_db():
-
     inp={"table":"LOGIN","type":"delete","where":""}
     send=requests.post('http://3.211.13.189/api/v1/db/write',json=inp)
     ret=send.json()
 
     return Response("Cleared database", status=200, mimetype='application/text')
 
-
 @app.route('/api/v1/_count',methods=["GET"])
 def get_count():
 
-    """try:
+    try:
         f=open("../COUNT/count","r")
         count_old=int(f.read())
         f.close()
     except:
         count_old=0
-        return Response("Not able to open file")"""
-
-    inp={"table":"COUNT_NO","columns":["COUNTS"],"where":""}
-    send=requests.post('http://localhost/api/v1/db/read',json=inp)
-    res = send.content
-    res = eval(res)
-    # return int(res[0][0])
-    #return Response(str(res[0][0]),status=200,mimetype="application/text")
+        return Response("Not able to open file")
 
     result = []
-    result.append(res[0][0])
-    return json.dumps(result)
+    result.append(count_old)
+    return jsonify(result)
 
 @app.route('/api/v1/_count',methods=["DELETE"])
 def reset_count():
 
-    """try:
+    try:
         f=open("../COUNT/count","w")
         f.write("0")
         f.close()
     except:
         return Response("Not able to write file")
 
-    return Response("Count reseted", status=200, mimetype='application/text')"""
-
-    inp={"table":"COUNT_NO","type":"delete","where":""}
-    send=requests.post('http://localhost/api/v1/db/write',json=inp)
-    inp={"table":"COUNT_NO","type":"insert","columns":["COUNTS"],"data":[0]}
-    send=requests.post('http://localhost/api/v1/db/write',json=inp)
-    return Response("Count reseted",status=200,mimetype="application/text")
+    return Response("Count reseted", status=200, mimetype='application/text')
 
 
 """@app.route('/api/v1/rides',methods=["POST"])
@@ -356,12 +335,11 @@ def write_db():
     if(json["type"]=="insert"):
 
         columns = json["columns"][0]
-        data = str(json["data"][0])
+        data = "'"+json["data"][0]+"'"
 
-        """ for iter in range(1,len(json["columns"])):
+        for iter in range(1,len(json["columns"])):
             columns = columns + "," + json["columns"][iter]
             data = data + ",'" + json["data"][iter]+"'"
-        """
 
         sql = "INSERT INTO "+json["table"]+"("+columns+") VALUES ("+data+")"
     elif(json["type"]=="delete"):
@@ -403,4 +381,4 @@ def read_db():
     return Response(str(results),status=200,mimetype="application/text")
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False)
+    app.run()
