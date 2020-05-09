@@ -164,6 +164,108 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "Direct  list users",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://3.211.13.189/api/v1/users",
+					"protocol": "http",
+					"host": [
+						"3",
+						"211",
+						"13",
+						"189"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Direct add user",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"username\": \"user\",\n\t\"password\": \"3d725109c7e7c0bfb9d709836735b56d943d263f\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://3.211.13.189/api/v1/users",
+					"protocol": "http",
+					"host": [
+						"3",
+						"211",
+						"13",
+						"189"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Direct remove user",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://3.211.13.189/api/v1/users/user",
+					"protocol": "http",
+					"host": [
+						"3",
+						"211",
+						"13",
+						"189"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users",
+						"user"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Wrong method request",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://3.211.13.189/api/v1/users",
+					"protocol": "http",
+					"host": [
+						"3",
+						"211",
+						"13",
+						"189"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users"
+					]
+				}
+			},
+			"response": []
 		}
 	],
 	"protocolProfileBehavior": {}

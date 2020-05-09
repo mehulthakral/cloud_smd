@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  website:
+    build: .
+    container_name: orchestrator
+    links:
+      - db
+    hostname: orchestrator
+    image: orchestrator
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - '80:80'
+  db:
+    image: mysql:5.7
+    ports:
+      - "32001:3306"
+    environment:
+      MYSQL_USER: user 
+      MYSQL_ROOT_PASSWORD: 123
+      MYSQL_PASSWORD: 123
+      MYSQL_DATABASE: CLOUD
+    volumes:
+      - ./database:/tmp/database
+    command: mysqld --init-file="/tmp/database/Cloud.sql"
+
+networks:
+  default:
+    external:
+      name: pronet
