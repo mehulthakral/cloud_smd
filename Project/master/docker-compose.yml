@@ -1,10 +1,10 @@
 version: '3'
 
 services:
-  website_1:
-    build: .
-    container_name: master
+  website:
     image: master
+    build: .
+    hostname: master
     environment:
       MYSQL_USER: user 
       MYSQL_ROOT_PASSWORD: 123
@@ -13,7 +13,6 @@ services:
     volumes:
       - ./database:/tmp/database
     command: mysqld --init-file="/tmp/database/Cloud.sql"
-
 networks:
   default:
     external:

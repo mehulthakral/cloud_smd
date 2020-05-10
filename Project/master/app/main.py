@@ -7,22 +7,26 @@ from random import randint
 import pika
 import subprocess
 import uuid
+#import time
+#import sys
+#subprocess.Popen(["/bin/bash", "/usr/local/bin/docker-entrypoint.sh"])
 
+print("hi0")
 from kazoo.client import KazooClient
 from kazoo.client import KazooState
-
+print("hi")
 import logging
 logging.basicConfig()
 logging.getLogger("kazoo.client").setLevel(logging.DEBUG)
 
-app = Flask(__name__)
-config = {
+#app = Flask(__name__)
+"""config = {
         'user': 'root',
         'password': '123',
         'host': 'localhost',
         'port': 3306,
         'database': 'CLOUD'
-    }
+    }"""
 
 print("hello")
 
@@ -50,7 +54,7 @@ zk.ensure_path("/znodes")
 zk.create("/znodes/node_", b"a value", ephemeral=True, sequence=True, makepath=True)    
 
 bashCommandName = 'hostname'
-output = subprocess.check_output(['bash','-c', bashCommandName]) 
+output = subprocess.check_output(['sh','-c', bashCommandName]) 
 #print(output)
 output = output.decode("utf-8")
 #print(type(output))
@@ -274,5 +278,5 @@ else :
 
 connection.close()
 
-if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False)
+#if __name__ == '__main__':
+#    app.run(debug=True, use_reloader=False)
