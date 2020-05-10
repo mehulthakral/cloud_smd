@@ -2,6 +2,7 @@ from flask import Flask,render_template,jsonify,request,abort,Response
 import pymysql
 import requests
 import ast
+import os
 from datetime import datetime
 from random import randint
 import json
@@ -73,7 +74,7 @@ def list_users():
     requests.post('http://localhost/inc')
 
     inp={"table":"LOGIN","columns":["USERNAME"],"where":""}
-    send=requests.post('http://3.211.13.189/api/v1/db/read',json=inp)
+    send=requests.post('http://'+ os.environ['DBAAS_IP'] +'/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
 
@@ -98,7 +99,7 @@ def add_user():
         return Response("Wrong request format",status=400,mimetype='application/text')
 
     inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":""}
-    send=requests.post('http://3.211.13.189/api/v1/db/read',json=inp)
+    send=requests.post('http://'+os.environ['DBAAS_IP']+'/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
 
@@ -114,7 +115,7 @@ def add_user():
 
     else:
         inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"data":[username,password],"type":"insert"}
-        send=requests.post('http://3.211.13.189/api/v1/db/write',json=inp)
+        send=requests.post('http://'+os.environ['DBAAS_IP']+'/api/v1/db/write',json=inp)
         ret=send.json()
         #print(ret)
         return Response("User added",status=201, mimetype='application/text')
@@ -133,7 +134,7 @@ def remove_user(username):
     requests.post('http://localhost/inc')
 
     inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+username+"'"}
-    send=requests.post('http://3.211.13.189/api/v1/db/read',json=inp)
+    send=requests.post('http://'+os.environ['DBAAS_IP']+'/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
     #print(credential)
@@ -141,11 +142,11 @@ def remove_user(username):
         return Response("Username not found", status=400, mimetype='application/text')
     else:
         inp={"table":"LOGIN","type":"delete","where":"USERNAME='"+username+"'"}
-        send=requests.post('http://3.211.13.189/api/v1/db/write',json=inp)
+        send=requests.post('http://'+os.environ['DBAAS_IP']+'/api/v1/db/write',json=inp)
         ret=send.json()
-        inp={"table":"USERS","type":"delete","where":"USERNAME='"+username+"'"}
-        send=requests.post('http://52.202.21.91/api/v1/db/write',json=inp)
-        ret=send.json()
+        #inp={"table":"USERS","type":"delete","where":"USERNAME='"+username+"'"}
+        #send=requests.post('http://52.202.21.91/api/v1/db/write',json=inp)
+        #ret=send.json()
         inp={"table":"RIDES","type":"delete","where":"CREATEDBY='"+username+"'"}
         send=requests.post('http://52.202.21.91/api/v1/db/write',json=inp)
         ret=send.json()
@@ -153,7 +154,7 @@ def remove_user(username):
         return Response("Removed user %s !" %username, status=200, mimetype='application/text')
 
 
-@app.route('/api/v1/db/clear',methods=["POST"])
+"""@app.route('/api/v1/db/clear',methods=["POST"])
 def clear_db():
 
     inp={"table":"LOGIN","type":"delete","where":""}
@@ -161,7 +162,7 @@ def clear_db():
     ret=send.json()
 
     return Response("Cleared database", status=200, mimetype='application/text')
-
+"""
 
 @app.route('/api/v1/_count',methods=["GET"])
 def get_count():
