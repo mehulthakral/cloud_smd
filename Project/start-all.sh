@@ -8,7 +8,8 @@ then
    cd ../
    sleep 2
    cd master && sudo docker-compose build --force-rm
-   sudo docker run -d --env MYSQL_ROOT_PASSWORD=123 --env MYSQL_ROOT_HOST=% --name master --hostname master --net pronet master 
+   sudo docker run -d --env MYSQL_ROOT_PASSWORD=123 --name master --hostname master --net pronet -v data:/var/lib/mysql master
+   #sudo docker run -d --env MYSQL_ROOT_PASSWORD=123 --env MYSQL_ROOT_HOST=% --name master --hostname master --net pronet master 
    sleep 4
    # sudo docker exec -it master python3 /app/main.py
    sudo docker run -d --env MYSQL_ROOT_PASSWORD=123 --env MYSQL_ROOT_HOST=% --name slave1 --hostname slave1 --net pronet master
@@ -20,7 +21,8 @@ else
    cd orchestrator && sudo docker-compose up -d
    cd ../
    sleep 2
-   sudo docker run -d --env MYSQL_ROOT_PASSWORD=123  --env MYSQL_ROOT_HOST=% --name master --hostname master --net pronet master 
+   sudo docker run -d --env MYSQL_ROOT_PASSWORD=123 --name master --hostname master --net pronet -v data:/var/lib/mysql master
+   #sudo docker run -d --env MYSQL_ROOT_PASSWORD=123  --env MYSQL_ROOT_HOST=% --name master --hostname master --net pronet master 
    sleep 4
    # sudo docker exec -it master python3 /app/main.py
    sudo docker run -d --env MYSQL_ROOT_PASSWORD=123  --env MYSQL_ROOT_HOST=% --name slave1 --hostname slave1 --net pronet master

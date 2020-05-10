@@ -7,10 +7,10 @@ from random import randint
 import pika
 import subprocess
 import uuid
-#import time
+import time
 #import sys
 #subprocess.Popen(["/bin/bash", "/usr/local/bin/docker-entrypoint.sh"])
-
+time.sleep(15)
 print("hi0")
 from kazoo.client import KazooClient
 from kazoo.client import KazooState
@@ -63,6 +63,7 @@ print(output)
 #output = 'slave1'
 
 config = {'user': 'root','password': '123','host': output,'port': 3306,'database': 'CLOUD'} 
+config2 = {'user': 'root','password': '123','host': output,'port': 3306}
 
 class RPC(object):
 
@@ -217,6 +218,34 @@ def update_db(data):
             inp={"table":table,"type":"insert","columns":col[table],"data":row}
             write_db(inp)
 
+def add_db():
+    db = pymysql.connect(**config2)
+    cur = db.cursor()
+    sql = "DROP DATABASE IF EXISTS CLOUD;"
+    cur.execute(sql)
+    results = cur.fetchall()
+    sql = "CREATE DATABASE CLOUD;"
+    cur.execute(sql)
+    results = cur.fetchall()
+    sql = "USE CLOUD;"
+    cur.execute(sql)
+    results = cur.fetchall()
+    sql = "CREATE TABLE LOGIN(USERNAME varchar(50),PASSWORD varchar(50),PRIMARY KEY(USERNAME));"
+    cur.execute(sql)
+    results = cur.fetchall()
+    sql = "CREATE TABLE RIDES(RIDEID int,CREATEDBY varchar(50),TIMESTAMPS varchar(50),SOURCE varchar(50),DESTINATION varchar(50),FOREIGN KEY(CREATEDBY) REFERENCES LOGIN(USERNAME) ON DELETE CASCADE ON UPDATE CASCADE,PRIMARY KEY(RIDEID));"
+    cur.execute(sql)
+    results = cur.fetchall()
+    sql = "CREATE TABLE USERS(RIDEID int,USERNAME varchar(50),FOREIGN KEY(RIDEID) REFERENCES RIDES(RIDEID) ON DELETE CASCADE ON UPDATE CASCADE,FOREIGN KEY(USERNAME) REFERENCES LOGIN(USERNAME) ON DELETE CASCADE ON UPDATE CASCADE,PRIMARY KEY(RIDEID,USERNAME));"
+    cur.execute(sql)
+    results = cur.fetchall()
+    sql = "CREATE TABLE COUNT_NO(RIDEACCESS int,RIDES int);"
+    cur.execute(sql)
+    results = cur.fetchall()
+    cur.close()
+    db.close()
+    print("Added db")
+
 def on_request_slave_read(ch, method, props, body):
     #print(body)
     body=eval(body)
@@ -254,6 +283,7 @@ if output == 'master':
     channel.start_consuming()
 
 else :
+    add_db()
     copy_rpc=RPC("CopyQ")
     res=copy_rpc.call("copy")
     copy_rpc.connection.close()
