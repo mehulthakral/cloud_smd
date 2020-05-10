@@ -193,10 +193,10 @@ def on_request_master_db(ch, method, props, body):
     print(results)
     data={}
     for table in results:
-        sql = "SELECT * FROM "+table
+        sql = "SELECT * FROM "+table[0]
         cur.execute(sql)
-        data[table] = cur.fetchall()
-        data[table] = list(map(list,data[table]))
+        data[table[0]] = cur.fetchall()
+        data[table[0]] = list(map(list,data[table[0]]))
     cur.close()
     db.close()
     
