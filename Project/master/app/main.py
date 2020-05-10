@@ -8,25 +8,13 @@ import pika
 import subprocess
 import uuid
 import time
-#import sys
-#subprocess.Popen(["/bin/bash", "/usr/local/bin/docker-entrypoint.sh"])
+
 time.sleep(15)
-print("hi0")
 from kazoo.client import KazooClient
 from kazoo.client import KazooState
-print("hi")
 import logging
 logging.basicConfig()
 logging.getLogger("kazoo.client").setLevel(logging.DEBUG)
-
-#app = Flask(__name__)
-"""config = {
-        'user': 'root',
-        'password': '123',
-        'host': 'localhost',
-        'port': 3306,
-        'database': 'CLOUD'
-    }"""
 
 print("hello")
 
@@ -55,12 +43,9 @@ zk.create("/znodes/node_", b"a value", ephemeral=True, sequence=True, makepath=T
 
 bashCommandName = 'hostname'
 output = subprocess.check_output(['sh','-c', bashCommandName]) 
-#print(output)
 output = output.decode("utf-8")
-#print(type(output))
 output = output.strip('\n')
 print(output)
-#output = 'slave1'
 
 config = {'user': 'root','password': '123','host': output,'port': 3306,'database': 'CLOUD'} 
 config2 = {'user': 'root','password': '123','host': output,'port': 3306}
@@ -151,7 +136,6 @@ def read_db(json):
         sql = "SELECT "+columns+" FROM "+json["table"]
     cur.execute(sql)
     results = cur.fetchall()
-    #print(results)
     results = list(map(list,results))
     cur.close()
     db.close()
@@ -159,10 +143,11 @@ def read_db(json):
 
 def on_request_master(ch, method, props, body):
     print(body)
-    message=eval(body)
-    if message == 'clear':
+
+    if body == b'clear':
         data=clear_db()
     else:
+        message=eval(body)
         data=write_db(message)
     
     print(data)
@@ -172,28 +157,16 @@ def on_request_master(ch, method, props, body):
     channel.basic_publish(exchange='my_exchange', routing_key='', body=body)
     print(" [x] Sent %r" % message)
     connection.close()
-    """
-    sync_rpc=RPC("syncQ")
-    sync_rpc.call(body)
-    sync_rpc.connection.close()
-    print("here")
-    #channel.queue_declare(queue="syncQ", exclusive=True)
-    #channel.basic_publish(exchange='', routing_key=request_queue, body=body)
-    #ch.exchange_declare(exchange='my_exchange', exchange_type='fanout')
-    """
     ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def on_request_master_db(ch, method, props, body):
     print(body)
-    #message=eval(body)
-    #data=read_db(message)
     db = pymysql.connect(**config)
     cur = db.cursor()
     sql = "SHOW TABLES;"
     cur.execute(sql)
     results = cur.fetchall()
-    #print(results)
     results = list(map(list,results))
     print(results)
     data={}
@@ -247,14 +220,11 @@ def add_db():
     print("Added db")
 
 def on_request_slave_read(ch, method, props, body):
-    #print(body)
     body=eval(body)
     print(body)
-    #print(type(body))
    
     data=read_db(body)
     print(data)
-    #data=data.decode("utf-8")
 
     ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -263,13 +233,10 @@ def on_request_slave_sync(ch, method, props, body):
     body=eval(body)
     data=write_db(body)
     print(data)
-    #ch.exchange_declare(exchange='my_exchange', exchange_type='fanout')
-    #ch.basic_publish(exchange='my_exchange', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
-    #ch.basic_ack(delivery_tag=method.delivery_tag)
+
 
 
 if output == 'master':
-    #print('master')
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
     channel = connection.channel()
     channel.queue_declare(queue='writeQ')
@@ -292,10 +259,8 @@ else :
     channel = connection.channel()
     channel.queue_declare(queue='readQ')
     channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
-    #channel.queue_declare(queue='syncQ')
     result = channel.queue_declare(queue='', exclusive=True)
     queue_name = result.method.queue
-    #channel.queue_bind(exchange='my_exchange', queue='syncQ')
     channel.queue_bind(exchange='my_exchange', queue=queue_name)
 
     channel.basic_qos(prefetch_count=1)
@@ -307,6 +272,3 @@ else :
     channel.start_consuming()
 
 connection.close()
-
-#if __name__ == '__main__':
-#    app.run(debug=True, use_reloader=False)
