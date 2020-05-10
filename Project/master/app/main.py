@@ -205,13 +205,13 @@ def on_request_master_db(ch, method, props, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def update_db(data):
-    #data=eval(data)
+    data=eval(data)
     print(data)
-    """
+    col={"LOGIN":["USERNAME","PASSWORD"],"RIDES":["RIDEID","CREATEDBY","TIMESTAMPS","SOURCE","DESTINATION"],"USERS":["RIDEID","USERNAME"],"COUNT_NO":["RIDEACCESS","RIDES"]}
     for table in data:
-        inp={"table":table,"type":"insert","columns":["COUNTS"],"data":[count]}
-        write_db(inp)
-    """
+        for row in data[table]:
+            inp={"table":table,"type":"insert","columns":col[table],"data":row}
+            write_db(inp)
 
 def on_request_slave_read(ch, method, props, body):
     #print(body)
