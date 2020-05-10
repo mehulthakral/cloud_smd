@@ -59,18 +59,19 @@ print(output)
 #output = 'slave1'
 
 config = {'user': 'root','password': '123','host': output,'port': 3306,'database': 'CLOUD'} 
-"""
+
 class RPC(object):
+
     def __init__(self,request_queue):
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='rabbitmq'))
 
         self.channel = self.connection.channel()
         self.request_queue=request_queue
-        result = self.channel.queue_declare(queue="returnQ2", exclusive=True)
+        result = self.channel.queue_declare(queue="responseQ2", exclusive=True)
 
         self.channel.basic_consume(
-            queue="returnQ2",
+            queue="responseQ2",
             on_message_callback=self.on_response,
             auto_ack=True)
 
@@ -81,12 +82,18 @@ class RPC(object):
     def call(self, n):
         self.response = None
         self.corr_id = str(uuid.uuid4())
-        self.channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
-        self.channel.basic_publish(exchange='my_exchange', routing_key=self.request_queue, properties=pika.BasicProperties(reply_to="returnQ2",correlation_id=self.corr_id,),body=str(n))
+        self.channel.basic_publish(
+            exchange='',
+            routing_key=self.request_queue,
+            properties=pika.BasicProperties(
+                reply_to="responseQ2",
+                correlation_id=self.corr_id,
+            ),
+            body=str(n))
         while self.response is None:
             self.connection.process_data_events()
         return self.response
-"""
+
 def write_db(json):
 
     db = pymysql.connect(**config)
@@ -172,6 +179,40 @@ def on_request_master(ch, method, props, body):
     ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
+def on_request_master_db(ch, method, props, body):
+    print(body)
+    #message=eval(body)
+    #data=read_db(message)
+    db = pymysql.connect(**config)
+    cur = db.cursor()
+    sql = "SHOW TABLES;"
+    cur.execute(sql)
+    results = cur.fetchall()
+    #print(results)
+    results = list(map(list,results))
+    print(results)
+    data={}
+    for table in results:
+        sql = "SELECT * FROM "+table
+        cur.execute(sql)
+        data[table] = cur.fetchall()
+        data[table] = list(map(list,data[table]))
+    cur.close()
+    db.close()
+    
+    print(data)
+    ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
+def update_db(data):
+    #data=eval(data)
+    print(data)
+    """
+    for table in data:
+        inp={"table":table,"type":"insert","columns":["COUNTS"],"data":[count]}
+        write_db(inp)
+    """
+
 def on_request_slave_read(ch, method, props, body):
     #print(body)
     body=eval(body)
@@ -199,14 +240,20 @@ if output == 'master':
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
     channel = connection.channel()
     channel.queue_declare(queue='writeQ')
+    channel.queue_declare(queue='CopyQ')
 
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue='writeQ', on_message_callback=on_request_master)
+    channel.basic_consume(queue='CopyQ', on_message_callback=on_request_master_db)
 
     print("Awaiting writeQ requests")
     channel.start_consuming()
 
 else :
+    copy_rpc=RPC("CopyQ")
+    res=copy_rpc.call("copy")
+    copy_rpc.connection.close()
+    update_db(res)
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
     channel = connection.channel()
     channel.queue_declare(queue='readQ')
