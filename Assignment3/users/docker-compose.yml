@@ -9,6 +9,9 @@ services:
       - './count:/COUNT:rw'
     ports:
       - '80:80'
+    environment:
+      DBAAS_IP: "52.206.4.84"
+      RIDES_IP: "52.202.21.91"
 
   db_user:
     image: mysql:5.7
