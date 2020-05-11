@@ -6,7 +6,9 @@ services:
     links:
       - db_ride
     ports:
-      - '8000:80'
+      - '80:80'
+    environment:
+      DBAAS_IP: "52.206.4.84"
 
   db_ride:
     image: mysql:5.7
