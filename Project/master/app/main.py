@@ -92,13 +92,13 @@ def write_db(json):
     if(json["type"]=="insert"):
 
         columns = json["columns"][0]
-        data = "'"+json["data"][0]+"'"
+        data = "'"+str(json["data"][0])+"'"
 
         for iter in range(1,len(json["columns"])):
-            columns = columns + "," + json["columns"][iter]
-            data = data + ",'" + json["data"][iter]+"'"
+            columns = columns + "," + str(json["columns"][iter])
+            data = data + ",'" + str(json["data"][iter])+"'"
 
-        sql = "INSERT INTO "+json["table"]+"("+columns+") VALUES ("+data+")"
+        sql = "INSERT INTO "+str(json["table"])+"("+str(columns)+") VALUES ("+str(data)+")"
     elif(json["type"]=="delete"):
 
         if json["where"]!="":
@@ -117,6 +117,9 @@ def clear_db():
     data=write_db(inp)
 
     inp={"table":"USERS","type":"delete", "where":""}
+    data=write_db(inp)
+
+    inp={"table":"LOGIN","type":"delete", "where":""}
     data=write_db(inp)
 
     return "Cleared database"
@@ -243,9 +246,9 @@ def on_request_slave_sync(ch, method, props, body):
 
 
 if output == 'master':
-    inp={"table":"COUNT_NO","type":"insert","columns":["RIDEACCESS","RIDES"],"data":["0","0"]}
-    result=write_db(inp)
-    print(result)
+    #inp={"table":"COUNT_NO","type":"insert","columns":["RIDEACCESS","RIDES"],"data":["0","0"]}
+    #result=write_db(inp)
+    #print(result)
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
     channel = connection.channel()
     channel.queue_declare(queue='writeQ')
