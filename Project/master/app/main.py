@@ -155,7 +155,7 @@ def on_request_master(ch, method, props, body):
     channel = connection.channel()
     channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
     channel.basic_publish(exchange='my_exchange', routing_key='', body=body)
-    print(" [x] Sent %r" % message)
+    print(" [x] Sent %r" % body)
     connection.close()
     ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -230,13 +230,22 @@ def on_request_slave_read(ch, method, props, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def on_request_slave_sync(ch, method, props, body):
-    body=eval(body)
-    data=write_db(body)
+    print(body)
+
+    if body == b'clear':
+        data=clear_db()
+    else:
+        message=eval(body)
+        data=write_db(message)
+
     print(data)
 
 
 
 if output == 'master':
+    inp={"table":"COUNT_NO","type":"insert","columns":["RIDEACCESS","RIDES"],"data":["0","0"]}
+    result=write_db(inp)
+    print(result)
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
     channel = connection.channel()
     channel.queue_declare(queue='writeQ')
