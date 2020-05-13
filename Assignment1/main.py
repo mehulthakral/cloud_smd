@@ -7,6 +7,7 @@ from random import randint
 
 app = Flask(__name__)
 
+# Function to check whether password is in sha format or not
 def is_sha1(maybe_sha):
     if len(maybe_sha) != 40:
         return False
@@ -16,16 +17,16 @@ def is_sha1(maybe_sha):
         return False
     return True
 
-# def wrong(timestamp):
-
+# Function for testing db
 @app.route('/api/v1')
-def start():
+def test():
     inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":""}
     send=requests.post('http://52.73.190.55/api/v1/db/read',json=inp)
     credential=send.content
     credential=eval(credential)
     return credential
 
+# Function for adding a user
 @app.route('/api/v1/users',methods=["PUT"])
 def add_user():
 
@@ -56,6 +57,7 @@ def add_user():
         #print(ret)
         return Response("User added",status=201, mimetype='application/text')
 
+# Function for removing a user
 @app.route('/api/v1/users/<username>',methods=["DELETE"])
 def remove_user(username):
 
@@ -213,6 +215,7 @@ def delete_ride(rideId):
     ret=send.json()
     return Response("Deleted ride",status=200,mimetype="application/text")
 
+# Function for writing data to db
 @app.route('/api/v1/db/write',methods=["POST"])
 def write_db():
     db = pymysql.connect("localhost", "user", "123", "CLOUD")
@@ -245,6 +248,7 @@ def write_db():
     db.close()
     return Response("1",status=200,mimetype="application/text")
 
+# Function for reading data from db
 @app.route('/api/v1/db/read',methods=["POST"])
 def read_db():
     db = pymysql.connect("localhost", "user", "123", "CLOUD")

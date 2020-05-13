@@ -30,14 +30,17 @@ config = {
         'database': 'CLOUD'
     }
 
+# Connecting and starting kazoo client 
 zk = KazooClient(hosts='zookeeper:2181')
 zk.start()
 
+# Checking status
 if zk.connected:
     print("zk connected")
 else:
     print("Not able to connect to zk")
 
+# Removing old znodes
 if(zk.exists("/znodes")):
     zk.delete("/znodes",recursive=True)
 
@@ -57,8 +60,10 @@ def my_listener(state):
         # Handle being connected/reconnected to Zookeeper
         print("zk state changed")
 
+# Adding listener to take care of kazoo client state
 zk.add_listener(my_listener)
 
+# Providing fault tolerance for slaves using children watch
 @zk.ChildrenWatch("/znodes",send_event=True)
 def watch_children(children,event):
     # print(event)
@@ -76,6 +81,7 @@ def watch_children(children,event):
 
 # Above function called immediately, and from then on
 
+# Function used to increment count of read db requests
 @app.route('/api/v1/inc',methods=["GET"])
 def inc():
 
@@ -90,6 +96,7 @@ def inc():
     send=requests.post('http://localhost/api/v1/db_count/write',json=inp)
     return Response("Incremented",status=200,mimetype="application/text")
 
+# Function used to get count of read db requests
 @app.route('/api/v1/get_count',methods=["GET"])
 def get_count():
     
@@ -100,6 +107,7 @@ def get_count():
     # return int(res[0][0])
     return Response(str(res[0][0]),status=200,mimetype="application/text") 
 
+# Function used to reset count of read db requests
 @app.route('/api/v1/reset_count',methods=["GET"])
 def reset_count(): 
 
@@ -109,6 +117,7 @@ def reset_count():
     send=requests.post('http://localhost/api/v1/db_count/write',json=inp)
     return Response("Count reseted",status=200,mimetype="application/text")
 
+# Function used to change flag which is used to track first request to read_db
 @app.route('/api/v1/change',methods=["GET"])
 def change_flag():
      
@@ -118,6 +127,7 @@ def change_flag():
     send=requests.post('http://localhost/api/v1/db_count/write',json=inp)
     return Response("Changed flag",status=200,mimetype="application/text")
 
+# Function used to get flag which is used to track first request to read_db
 @app.route('/api/v1/get_flag',methods=["GET"])
 def get_flag():
     
@@ -128,6 +138,7 @@ def get_flag():
     # return int(res[0][0])
     return Response(str(res[0][0]),status=200,mimetype="application/text") 
 
+# Function used to reset flag which is used to track first request to read_db
 @app.route('/api/v1/reset_flag',methods=["GET"])
 def reset_flag(): 
 
@@ -137,12 +148,14 @@ def reset_flag():
     send=requests.post('http://localhost/api/v1/db_count/write',json=inp)
     return Response("Flag reseted",status=200,mimetype="application/text")
 
+# Function used to create slave for auto-scaling
 @app.route('/api/v1/create/<num>',methods=["GET"])
 def create_slave(num):
     client = docker.from_env()
     container = client.containers.run('master','',name="slave"+str(num),hostname="slave"+str(num),environment=["MYSQL_ROOT_PASSWORD=123"],network="pronet",detach=True)
     return Response("Slave created",status=200,mimetype="application/text")
 
+# Function used to stop slave for auto-scaling
 @app.route('/api/v1/stop/slave',methods=["POST"])
 def stop_slave():
     client = docker.from_env()
@@ -156,41 +169,8 @@ def stop_slave():
         i.remove()
         break
     return jsonify(res)
-
-@app.route('/api/v1/check',methods=["GET"])
-def check():
-    print("check called")
-    send=requests.get('http://localhost/api/v1/get_count')
-    res = eval(send.content)   
-    # print(res)
-    count = int(res)
-    send=requests.get('http://localhost/api/v1/reset_count')
-    send=requests.get('http://localhost/api/v1/worker/list')
-    credential = send.content
-    num_slaves = len(eval(credential))
-    if(0<=count and count<=20):
-        if(num_slaves>1):
-            for x in range(num_slaves-1):
-                send=requests.post('http://localhost/api/v1/crash/slave')
-        elif(num_slaves<1):
-            for x in range(1-num_slaves):
-                create_slave(num_slaves+x+1)
-    elif(21<=count and count<=40):
-        if(num_slaves>2):
-            for x in range(num_slaves-2):
-                send=requests.post('http://localhost/api/v1/crash/slave')
-        elif(num_slaves<2):
-            for x in range(2-num_slaves):
-                create_slave(num_slaves+x+1)
-    elif(41<=count and count<=60):
-        if(num_slaves>3):
-            for x in range(num_slaves-3):
-                send=requests.post('http://localhost/api/v1/crash/slave')
-        elif(num_slaves<3):
-            for x in range(3-num_slaves):
-                create_slave(num_slaves+x+1)
-    return Response("Scaled successfully",status=200,mimetype="application/text")
     
+# Function used to write count(used for read_db requests) to db of orchestrator    
 @app.route('/api/v1/db_count/write',methods=["POST"])
 def write_db_count():
     db = pymysql.connect(**config)
@@ -203,10 +183,6 @@ def write_db_count():
 
         columns = json["columns"][0]
         data = str(json["data"][0])
-
-        # for iter in range(1,len(json["columns"])):
-        #     columns = columns + "," + json["columns"][iter]
-        #     data = data + ",'" + json["data"][iter]+"'"
 
         sql = "INSERT INTO "+json["table"]+"("+columns+") VALUES ("+data+")"
     elif(json["type"]=="delete"):
@@ -223,6 +199,7 @@ def write_db_count():
     db.close()
     return Response("1",status=200,mimetype="application/text")
 
+# Function used to read count(used for read_db requests) to db of orchestrator
 @app.route('/api/v1/db_count/read',methods=["POST"])
 def read_db_count():
     db = pymysql.connect(**config)
@@ -297,10 +274,12 @@ def write_db():
 @app.route('/api/v1/db/read',methods=["POST"])
 def read_db():
     
+    # Incrementing count of read_db requests
     send=requests.get('http://localhost/api/v1/inc')
+
+    # Code for starting scheduler for auto-scaling when read_db request is sent first time
     send=requests.get('http://localhost/api/v1/get_flag')
     flag = int(eval(send.content))
-    # print(flag)
     if(flag==0):
         send=requests.get('http://localhost/api/v1/change')
         print("first time")
@@ -310,7 +289,6 @@ def read_db():
     res=read_rpc.call(request.get_json())
     read_rpc.connection.close()
     return Response(res,status=200,mimetype="application/text")
-    #return Response("Successfully read",status=200,mimetype="application/text")
 
 @app.route('/api/v1/db/clear',methods=["POST"])
 def clear_db():

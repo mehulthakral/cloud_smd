@@ -13,6 +13,8 @@ config = {
         'port': 3306,
         'database': 'CLOUD'
     }
+
+# Function to check whether password is in sha format or not
 def is_sha1(maybe_sha):
     if len(maybe_sha) != 40:
         return False
@@ -22,11 +24,12 @@ def is_sha1(maybe_sha):
         return False
     return True
 
-# def wrong(timestamp):
+# Function for testing
 @app.route('/',methods=["GET"])
 def test():
     return "hi"
 
+# Function for listing users
 @app.route('/api/v1/users',methods=["GET"])
 def list_users():
     inp={"table":"LOGIN","columns":["USERNAME"],"where":""}
@@ -42,7 +45,7 @@ def list_users():
             result.append(credential[i][0])
         return jsonify(result)
 
-
+# Function for adding a user
 @app.route('/api/v1/users',methods=["PUT"])
 def add_user():
 
@@ -74,7 +77,7 @@ def add_user():
         #print(ret)
         return Response("User added",status=201, mimetype='application/text')
 
-
+# Function for removing a user
 @app.route('/api/v1/users/<username>',methods=["DELETE"])
 def remove_user(username):
 
@@ -98,7 +101,7 @@ def remove_user(username):
 
         return Response("Removed user %s !" %username, status=200, mimetype='application/text')
 
-
+# Function for clearing data of users microservice from users db
 @app.route('/api/v1/db/clear',methods=["POST"])
 def clear_db():
     inp={"table":"LOGIN","type":"delete","where":""}
@@ -107,148 +110,7 @@ def clear_db():
 
     return Response("Cleared database", status=200, mimetype='application/text')
 
-
-"""@app.route('/api/v1/rides',methods=["POST"])
-def create_ride():
-    json = request.get_json()
-
-    inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+json["created_by"]+"'"}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
-    credential=send.content
-    credential=eval(credential)
-
-    #Check if timestamp in the correct format
-    if("created_by" not in json or "timestamp" not in json or "source" not in json or "destination" not in json or len(credential)<1 or json["source"]=="" or json["destination"]=="" or int(json["source"])<1 or int(json["source"])>198 or int(json["destination"])<1 or int(json["destination"])>198 ):
-        return Response("Wrong format",status=400,mimetype="application/text")
-    else:
-        rideId=randint(0, 10000)
-        inp={"table":"RIDES","columns":["RIDEID","CREATEDBY"],"where":"RIDEID='"+str(rideId)+"'"}
-        send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
-        res=send.content
-        print(res)
-        while len(res)>5:
-            print(res)
-            rideId=randint(0, 10000)
-            inp={"table":"RIDES","columns":["RIDEID","CREATEDBY","timestamp"],"where":"RIDEID='"+str(rideId)+"'"}
-            send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
-            res=send.content
-        inp={"table":"RIDES","type":"insert","columns":["RIDEID","CREATEDBY","TIMESTAMPS","SOURCE","DESTINATION"],"data":[str(rideId),json["created_by"],json["timestamp"],json["source"],json["destination"]]}
-        send=requests.post('http://52.73.190.55:8080/api/v1/db/write',json=inp)
-        ret=send.json()
-        inp={"table":"USERS","type":"insert","columns":["RIDEID","USERNAME"],"data":[str(rideId),json["created_by"]]}
-        send=requests.post('http://52.73.190.55:8000/api/v1/db/write',json=inp)
-        ret=send.json()
-        return Response("Ride created",status=201,mimetype="application/text")
-
-@app.route('/api/v1/rides',methods=["GET"])
-def list_rides():
-    
-    source = request.args.get("source")
-    destination = request.args.get("destination")
-    if(source=="" or destination=="" or int(source)<1 or int(source)>198 or int(destination)<1 or int(destination)>198 ):
-        return Response("Wrong/Empty src or dest",status=400,mimetype="application/text")
-    
-    inp={"table":"RIDES","columns":["RIDEID","CREATEDBY","TIMESTAMPS"],"where":"SOURCE="+source+" AND DESTINATION="+destination}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
-    res=send.content
-    res=eval(res)
-    result=[]
-    
-    for i in range(0,len(res)):
-        datetimeObj = datetime.strptime(res[i][2], '%d-%m-%Y:%S-%M-%H')
-        #return str(datetimeObj)+" "+str(datetime.now())
-        if datetimeObj>datetime.now():
-            #result.append(res[i])
-            temp = {}
-            temp["rideId"] = res[i][0]
-            temp["USERNAME"] = res[i][1]
-            temp["timestamp"] = res[i][2]
-            result.append(temp)
-    if(len(result)==0):
-        return Response("No match found",status=204,mimetype="application/text")
-    else:
-        return jsonify(result)
-
-@app.route('/api/v1/rides/<rideId>',methods=["GET"])
-def details_ride(rideId):
-
-    
-    inp={"table":"RIDES","columns":["RIDEID"],"where":"RIDEID='"+rideId+"'"}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
-    res=send.content
-    res=eval(res)
-
-    rideId = int(rideId)
-    flag=0
-    
-    for i in range(0,len(res)):
-        if(rideId in res[i]):
-            flag+=1
-    if flag==0:
-        return Response("No match found",status=204,mimetype="application/text")
-    else:
-        inp={"table":"RIDES","columns":["RIDEID","CREATEDBY","TIMESTAMPS","SOURCE","DESTINATION"],"where":"RIDEID='"+str(rideId)+"'"}
-        send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
-        res=send.content
-        res=eval(res)
-
-        inp={"table":"USERS","columns":["USERNAME"],"where":"RIDEID='"+str(rideId)+"'"}
-        send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
-        riders=send.content
-        riders=eval(riders)
-
-        temp = {}
-        temp["rideId"] = res[0][0]
-        temp["created_by"] = res[0][1]
-
-        ride=[]
-        for i in range(0,len(riders)):
-            ride.append(riders[i][0])
-
-        temp["users"] = ride
-        temp["timestamp"] = res[0][2]
-        temp["source"] = res[0][3]
-        temp["destination"] = res[0][4]
-
-        return jsonify(temp)
-
-@app.route('/api/v1/rides/<rideId>',methods=["POST"])
-def join_ride(rideId):
-    json = request.get_json()
-    inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+json["username"]+"'"}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
-    credential=send.content
-    credential=eval(credential)
-    inp={"table":"RIDES","columns":["RIDEID"],"where":"RIDEID='"+rideId+"'"}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
-    ride=send.content
-    ride=eval(ride)
-    rideId = int(rideId)
-    if(len(ride)==0 or "username" not in json or len(credential)<1):
-        return Response("Wrong rideId/username",status=204,mimetype="application/text")
-    else:
-        inp={"table":"USERS","type":"insert","columns":["RIDEID","USERNAME"],"data":[str(rideId),json["username"]]}
-        send=requests.post('http://52.73.190.55:8080/api/v1/db/write',json=inp)
-        ret=send.json()
-        #rides[rideId][4].append(json["username"])
-        return Response("Joined ride",status=200,mimetype="application/text")
-
-@app.route('/api/v1/rides/<rideId>',methods=["DELETE"])
-def delete_ride(rideId):
-
-    inp={"table":"RIDES","columns":["RIDEID"],"where":"RIDEID='"+rideId+"'"}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/read',json=inp)
-    ride=send.content
-    ride=eval(ride)
-    rideId = int(rideId)
-    #if(len(ride)==0):
-    #    return Response("Wrong rideId",status=204,mimetype="application/text")
-    #else:
-    inp={"table":"RIDES","type":"delete","where":"RIDEID='"+str(rideId)+"'"}
-    send=requests.post('http://52.73.190.55:8080/api/v1/db/write',json=inp)
-    ret=send.json()
-    return Response("Deleted ride",status=200,mimetype="application/text")"""
-
+# Function for writing data of users microservice to users db
 @app.route('/api/v1/db/write',methods=["POST"])
 def write_db():
     db = pymysql.connect(**config)
@@ -281,6 +143,7 @@ def write_db():
     db.close()
     return Response("1",status=200,mimetype="application/text")
 
+# Function for reading data of users microservice to users db
 @app.route('/api/v1/db/read',methods=["POST"])
 def read_db():
     db = pymysql.connect(**config)
