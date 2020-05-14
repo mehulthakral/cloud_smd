@@ -224,7 +224,7 @@ def read_db_count():
     db.close()
     return Response(str(results),status=200,mimetype="application/text")
 
-class RPC(object):
+class RPC(object): #class to handle the read and write queues
 
     def __init__(self,request_queue):
         self.connection = pika.BlockingConnection(
@@ -239,13 +239,13 @@ class RPC(object):
             on_message_callback=self.on_response,
             auto_ack=True)
 
-    def on_response(self, ch, method, props, body):
+    def on_response(self, ch, method, props, body): #method called when response is obtained.
         if self.corr_id == props.correlation_id:
             self.response = body
 
-    def call(self, n):
+    def call(self, n): # send the data to respective queue specified earlier during construction
         self.response = None
-        self.corr_id = str(uuid.uuid4())
+        self.corr_id = str(uuid.uuid4()) 
         self.channel.basic_publish(
             exchange='',
             routing_key=self.request_queue,
@@ -265,13 +265,13 @@ def test():
 
 @app.route('/api/v1/db/write',methods=["POST"])
 def write_db():
-    write_rpc=RPC("writeQ")
-    res=write_rpc.call(request.get_json())
-    write_rpc.connection.close()
-    return Response(res,status=200,mimetype="application/text")
+    write_rpc=RPC("writeQ") 
+    res=write_rpc.call(request.get_json()) #request is written to writeQ
+    write_rpc.connection.close() 
+    return Response(res,status=200,mimetype="application/text") #response returned
 
 
-@app.route('/api/v1/db/read',methods=["POST"])
+@app.route('/api/v1/db/read',methods=["POST"]) #read db API
 def read_db():
     
     # Incrementing count of read_db requests
@@ -285,55 +285,55 @@ def read_db():
         print("first time")
         p = subprocess.Popen(['python', 'auto_scale.py'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         
-    read_rpc=RPC("readQ")
-    res=read_rpc.call(request.get_json())
+    read_rpc=RPC("readQ") # creates object of RPI class which is used to handle queues
+    res=read_rpc.call(request.get_json()) # send the data to readQ
     read_rpc.connection.close()
-    return Response(res,status=200,mimetype="application/text")
+    return Response(res,status=200,mimetype="application/text") #return the result 
 
-@app.route('/api/v1/db/clear',methods=["POST"])
+@app.route('/api/v1/db/clear',methods=["POST"]) # API to clear database
 def clear_db():
-    clear_rpc=RPC("writeQ")
-    res=clear_rpc.call("clear")
+    clear_rpc=RPC("writeQ") #treated as a message to writeQ
+    res=clear_rpc.call("clear") # clear is sent to writeQ. 
     clear_rpc.connection.close()
     return Response(res,status=200,mimetype="application/text")
 
-@app.route('/api/v1/crash/master',methods=["POST"])
+@app.route('/api/v1/crash/master',methods=["POST"]) # crash master API
 def crash_master():
     client = docker.from_env()
     l=client.containers.list()
-    l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True)
+    l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True) 
     res=[]
     for i in l:
-      if i.name=='master':
+      if i.name=='master': # if container name is master, then stop it.
         res.append(i.attrs['State']['Pid'])
-        i.stop()
+        i.stop() #stop the master
         break
-    return jsonify(res)
+    return jsonify(res) #pid of killed master container
 
-@app.route('/api/v1/crash/slave',methods=["POST"])
-def crash_slave():
+@app.route('/api/v1/crash/slave',methods=["POST"]) #crash slave API
+def crash_slave(): 
     client = docker.from_env()
-    l=client.containers.list()
-    l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True)
+    l=client.containers.list()  # returns list of container objects
+    l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True) #sort in reverse order by PID
     res=[]
     for i in l:
-      if i.name not in ('master','orchestrator','zookeeper','rabbitmq'):
+      if i.name not in ('master','orchestrator','zookeeper','rabbitmq','orchestrator_db_1'): #if i.name is not any of the above, then it is a slave
         res.append(i.attrs['State']['Pid'])
-        i.kill()
+        i.kill() #slave is killed
         break
-    return jsonify(res)
+    return jsonify(res) # return pid of the killed slave container
 
 @app.route('/api/v1/worker/list',methods=["GET"])
-def worker_list():
+def worker_list(): #this api returns the list of slaves
     client = docker.from_env()
-    l=client.containers.list()
-    l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True)
+    l=client.containers.list() # returns list of container objects
+    l.sort(key=lambda x:x.attrs['State']['Pid'],reverse=True) #sort in reverse order by PID
     res=[]
     for i in l:
       if i.name not in ('master','orchestrator','zookeeper','rabbitmq','orchestrator_db_1'):
-        res.append(i.attrs['State']['Pid'])
+        res.append(i.attrs['State']['Pid']) #append the pid of the salve containers to list res
 
-    return jsonify(res)
+    return jsonify(res) #return list of PIDs.
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
