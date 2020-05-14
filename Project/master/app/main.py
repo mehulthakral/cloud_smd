@@ -18,9 +18,11 @@ logging.getLogger("kazoo.client").setLevel(logging.DEBUG)
 
 print("hello")
 
+# Connecting and starting kazoo client 
 zk = KazooClient(hosts='zookeeper:2181')
 zk.start()
 
+# Checking status
 if zk.connected:
     print("zk connected")
 else:
@@ -37,7 +39,10 @@ def my_listener(state):
         # Handle being connected/reconnected to Zookeeper
         print("zk state changed")
 
+# Adding listener to take care of kazoo client state
 zk.add_listener(my_listener)
+
+# Ensure a path, create if necessary
 zk.ensure_path("/znodes")
 zk.create("/znodes/node_", b"a value", ephemeral=True, sequence=True, makepath=True)    
 
@@ -50,7 +55,7 @@ print(output)
 config = {'user': 'root','password': '123','host': output,'port': 3306,'database': 'CLOUD'} 
 config2 = {'user': 'root','password': '123','host': output,'port': 3306}
 
-class RPC(object):
+class RPC(object): #class to handle the read and write queues
 
     def __init__(self,request_queue):
         self.connection = pika.BlockingConnection(
@@ -65,11 +70,11 @@ class RPC(object):
             on_message_callback=self.on_response,
             auto_ack=True)
 
-    def on_response(self, ch, method, props, body):
+    def on_response(self, ch, method, props, body): #method called when response is obtained.
         if self.corr_id == props.correlation_id:
             self.response = body
 
-    def call(self, n):
+    def call(self, n): # send the data to respective queue specified earlier during construction
         self.response = None
         self.corr_id = str(uuid.uuid4())
         self.channel.basic_publish(
@@ -84,9 +89,9 @@ class RPC(object):
             self.connection.process_data_events()
         return self.response
 
-def write_db(json):
+def write_db(json): # Function used to write data to the database
 
-    db = pymysql.connect(**config)
+    db = pymysql.connect(**config) #Command to connect to database
     cur = db.cursor()
 
     if(json["type"]=="insert"):
@@ -106,13 +111,13 @@ def write_db(json):
         else:
             sql = "DELETE FROM "+json["table"]
 
-    cur.execute(sql)
+    cur.execute(sql) #Command to execute sql statement
     db.commit()
     cur.close()
-    db.close()
+    db.close() #Close database connection
     return "1"
-
-def clear_db():
+ 
+def clear_db(): # Function used to clear the database
     inp={"table":"RIDES","type":"delete", "where":""}
     data=write_db(inp)
 
@@ -124,8 +129,8 @@ def clear_db():
 
     return "Cleared database"
 
-def read_db(json):
-    db = pymysql.connect(**config)
+def read_db(json): # Function used to read data from the database
+    db = pymysql.connect(**config) #Command to connect to database
 
     cur = db.cursor()
     columns = json["columns"][0]
@@ -137,35 +142,35 @@ def read_db(json):
         sql = "SELECT "+columns+" FROM "+json["table"]+" WHERE "+json["where"]
     else:
         sql = "SELECT "+columns+" FROM "+json["table"]
-    cur.execute(sql)
-    results = cur.fetchall()
+    cur.execute(sql) #Execute sql statement
+    results = cur.fetchall() #Fetch results of sql query
     results = list(map(list,results))
     cur.close()
-    db.close()
+    db.close() #Command to close db connection
     return results
 
-def on_request_master(ch, method, props, body):
+def on_request_master(ch, method, props, body): # Function is executed when master recieves a write request
     print(body)
 
     if body == b'clear':
-        data=clear_db()
-    else:
+        data=clear_db() #Call clear db API
+    else: 
         message=eval(body)
-        data=write_db(message)
+        data=write_db(message) #Call write db API
     
     print(data)
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq')) #Connect to rabbitmq
     channel = connection.channel()
-    channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
-    channel.basic_publish(exchange='my_exchange', routing_key='', body=body)
+    channel.exchange_declare(exchange='my_exchange', exchange_type='fanout') #Declare an exchange to connect to all slaves
+    channel.basic_publish(exchange='my_exchange', routing_key='', body=body) #Send write request to all slaves
     print(" [x] Sent %r" % body)
-    connection.close()
+    connection.close() #Close connection
     ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def on_request_master_db(ch, method, props, body):
     print(body)
-    db = pymysql.connect(**config)
+    db = pymysql.connect(**config) #Command to connect to database
     cur = db.cursor()
     sql = "SHOW TABLES;"
     cur.execute(sql)
@@ -179,13 +184,13 @@ def on_request_master_db(ch, method, props, body):
         data[table[0]] = cur.fetchall()
         data[table[0]] = list(map(list,data[table[0]]))
     cur.close()
-    db.close()
+    db.close() #Command to close db connection
     
     print(data)
     ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
-def update_db(data):
+def update_db(data): #Function to add all data from copyQ to slave database
     data=eval(data)
     print(data)
     col={"LOGIN":["USERNAME","PASSWORD"],"RIDES":["RIDEID","CREATEDBY","TIMESTAMPS","SOURCE","DESTINATION"],"USERS":["RIDEID","USERNAME"],"COUNT_NO":["RIDEACCESS","RIDES"]}
@@ -194,7 +199,7 @@ def update_db(data):
             inp={"table":table,"type":"insert","columns":col[table],"data":row}
             write_db(inp)
 
-def add_db():
+def add_db(): #Function to create database
     db = pymysql.connect(**config2)
     cur = db.cursor()
     sql = "DROP DATABASE IF EXISTS CLOUD;"
@@ -222,17 +227,17 @@ def add_db():
     db.close()
     print("Added db")
 
-def on_request_slave_read(ch, method, props, body):
+def on_request_slave_read(ch, method, props, body): #Function is called when slave gets a readQ request
     body=eval(body)
     print(body)
    
-    data=read_db(body)
+    data=read_db(body) #Call read db API
     print(data)
 
     ch.basic_publish(exchange='', routing_key=props.reply_to, properties=pika.BasicProperties(correlation_id = props.correlation_id), body=str(data))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
-def on_request_slave_sync(ch, method, props, body):
+def on_request_slave_sync(ch, method, props, body): #Function is called when slave gets a syncQ request
     print(body)
 
     if body == b'clear':
@@ -246,10 +251,7 @@ def on_request_slave_sync(ch, method, props, body):
 
 
 if output == 'master':
-    #inp={"table":"COUNT_NO","type":"insert","columns":["RIDEACCESS","RIDES"],"data":["0","0"]}
-    #result=write_db(inp)
-    #print(result)
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq')) #Connect to rabbitmq
     channel = connection.channel()
     channel.queue_declare(queue='writeQ')
     channel.queue_declare(queue='CopyQ')
@@ -267,13 +269,13 @@ else :
     res=copy_rpc.call("copy")
     copy_rpc.connection.close()
     update_db(res)
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq')) #Connect to rabbitmq
     channel = connection.channel()
     channel.queue_declare(queue='readQ')
-    channel.exchange_declare(exchange='my_exchange', exchange_type='fanout')
+    channel.exchange_declare(exchange='my_exchange', exchange_type='fanout') #Connect to my_exchange 
     result = channel.queue_declare(queue='', exclusive=True)
     queue_name = result.method.queue
-    channel.queue_bind(exchange='my_exchange', queue=queue_name)
+    channel.queue_bind(exchange='my_exchange', queue=queue_name) #Bind my_exchange to queue
 
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue='readQ', on_message_callback=on_request_slave_read)

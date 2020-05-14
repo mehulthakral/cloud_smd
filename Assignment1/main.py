@@ -74,6 +74,7 @@ def remove_user(username):
         ret=send.json()
         return Response("Removed user %s !" %username, status=200, mimetype='application/text')
 
+# Function for creating a new ride
 @app.route('/api/v1/rides',methods=["POST"])
 def create_ride():
     json = request.get_json()
@@ -106,6 +107,7 @@ def create_ride():
         ret=send.json()
         return Response("Ride created",status=201,mimetype="application/text")
 
+# Function for listing all future rides
 @app.route('/api/v1/rides',methods=["GET"])
 def list_rides():
     
@@ -135,6 +137,7 @@ def list_rides():
     else:
         return jsonify(result)
 
+# Function to get the details of a particular ride
 @app.route('/api/v1/rides/<rideId>',methods=["GET"])
 def details_ride(rideId):
 
@@ -178,6 +181,7 @@ def details_ride(rideId):
 
         return jsonify(temp)
 
+# Function for adding user to a ride
 @app.route('/api/v1/rides/<rideId>',methods=["POST"])
 def join_ride(rideId):
     json = request.get_json()
@@ -198,7 +202,8 @@ def join_ride(rideId):
         ret=send.json()
         #rides[rideId][4].append(json["username"])
         return Response("Joined ride",status=200,mimetype="application/text")
-
+        
+# Function to delete a ride
 @app.route('/api/v1/rides/<rideId>',methods=["DELETE"])
 def delete_ride(rideId):
 

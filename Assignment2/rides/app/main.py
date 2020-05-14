@@ -13,6 +13,8 @@ config = {
         'port': 3306,
         'database': 'CLOUD'
     }
+
+# Function to check whether password is in sha format or not
 def is_sha1(maybe_sha):
     if len(maybe_sha) != 40:
         return False
@@ -22,70 +24,15 @@ def is_sha1(maybe_sha):
         return False
     return True
 
-# def wrong(timestamp):
+# Function for testing
 @app.route('/')
 def test():
     return "hi"
-"""
-@app.route('/api/v1')
-def start():
-    inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":""}
-    send=requests.post('http://52.73.190.55:8000/api/v1/db/read',json=inp)
-    credential=send.content
-    credential=eval(credential)
-    return credential
 
-@app.route('/api/v1/users',methods=["PUT"])
-def add_user():
-
-    json = request.get_json()
-
-    if("username" not in json or "password" not in json):
-        return Response("Wrong request format",status=400,mimetype='application/text')
-
-    inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":""}
-    send=requests.post('http://52.73.190.55:8000/api/v1/db/read',json=inp)
-    credential=send.content
-    credential=eval(credential)
-
-    username = request.get_json()["username"]
-    password = request.get_json()["password"]
-
-    for i in range(0,len(credential)):
-        if(username in credential[i]):
-            return Response("Username already exists", status=400, mimetype='application/text')
-
-    if(is_sha1(password)==False):
-        return Response("Wrong password format", status=400, mimetype='application/text')  
-    
-    else:       
-        inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"data":[username,password],"type":"insert"}
-        send=requests.post('http://52.73.190.55:8000/api/v1/db/write',json=inp)
-        ret=send.json()
-        #print(ret)
-        return Response("User added",status=201, mimetype='application/text')
-
-@app.route('/api/v1/users/<username>',methods=["DELETE"])
-def remove_user(username):
-
-    inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+username+"'"}
-    send=requests.post('http://52.73.190.55:8000/api/v1/db/read',json=inp)
-    credential=send.content
-    credential=eval(credential)
-    #print(credential)
-    if(len(credential)<1):
-        return Response("Username not found", status=400, mimetype='application/text')
-    else:
-        inp={"table":"LOGIN","type":"delete","where":"USERNAME='"+username+"'"}
-        send=requests.post('http://52.73.190.55:8000/api/v1/db/write',json=inp)
-        ret=send.json()
-        return Response("Removed user %s !" %username, status=200, mimetype='application/text')
-"""
+# Function for creating a new ride
 @app.route('/api/v1/rides',methods=["POST"])
 def create_ride():
     json = request.get_json()
-
-    #inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+json["created_by"]+"'"}
     send=requests.get('http://52.73.190.55:8080/api/v1/users')
     #SEND REQUEST to list all users
     credential=send.content
@@ -114,6 +61,7 @@ def create_ride():
         ret=send.json()
         return Response("Ride created",status=201,mimetype="application/text")
 
+# Function for listing all future rides
 @app.route('/api/v1/rides',methods=["GET"])
 def list_rides():
     
@@ -143,10 +91,9 @@ def list_rides():
     else:
         return jsonify(result)
 
+# Function to get the details of a particular ride
 @app.route('/api/v1/rides/<rideId>',methods=["GET"])
 def details_ride(rideId):
-
-    
     inp={"table":"RIDES","columns":["RIDEID"],"where":"RIDEID='"+rideId+"'"}
     send=requests.post('http://52.73.190.55:8000/api/v1/db/read',json=inp)
     res=send.content
@@ -186,6 +133,7 @@ def details_ride(rideId):
 
         return jsonify(temp)
 
+# Function for adding user to a ride
 @app.route('/api/v1/rides/<rideId>',methods=["POST"])
 def join_ride(rideId):
     json = request.get_json()
@@ -213,6 +161,7 @@ def join_ride(rideId):
         #rides[rideId][4].append(json["username"])
         return Response("Joined ride",status=200,mimetype="application/text")
 
+# Function to delete a ride
 @app.route('/api/v1/rides/<rideId>',methods=["DELETE"])
 def delete_ride(rideId):
 
@@ -229,6 +178,7 @@ def delete_ride(rideId):
     ret=send.json()
     return Response("Deleted ride",status=200,mimetype="application/text")
 
+# Function for writing data to database
 @app.route('/api/v1/db/write',methods=["POST"])
 def write_db():
     db = pymysql.connect(**config)
@@ -261,6 +211,7 @@ def write_db():
     db.close()
     return Response("1",status=200,mimetype="application/text")
 
+# Function for reading data from database
 @app.route('/api/v1/db/read',methods=["POST"])
 def read_db():
     db = pymysql.connect(**config)
@@ -285,6 +236,7 @@ def read_db():
     db.close()
     return Response(str(results),status=200,mimetype="application/text")
 
+# Function for clearing the database
 @app.route('/api/v1/db/clear',methods=["POST"])
 def clear_db():
     inp={"table":"RIDES","type":"delete", "where":""}

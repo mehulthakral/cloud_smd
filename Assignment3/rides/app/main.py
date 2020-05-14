@@ -15,6 +15,8 @@ config = {
         'port': 3306,
         'database': 'CLOUD'
     }
+
+# Function to check whether password is in sha format or not
 def is_sha1(maybe_sha):
     if len(maybe_sha) != 40:
         return False
@@ -24,18 +26,16 @@ def is_sha1(maybe_sha):
         return False
     return True
 
-# def wrong(timestamp):
 @app.route('/test')
 def test():
     return "hi"
 
+# Function for creating a new ride
 @app.route('/api/v1/rides',methods=["POST"])
 def create_ride():
     json = request.get_json()
 
     requests.post('http://localhost/inc')
-
-    #inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+json["created_by"]+"'"}
     send=requests.get('http://assignment-81781011.us-east-1.elb.amazonaws.com/api/v1/users')
     #SEND REQUEST to list all users
     credential=send.content
@@ -65,17 +65,20 @@ def create_ride():
         #requests.post('http://52.202.21.91/rinc')
         return Response("Ride created",status=201,mimetype="application/text")
 
+# Function for handling requests sent with wrong methods
 @app.route('/api/v1/rides',methods=["CONNECT","PATCH","HEAD","OPTIONS","TRACE","PUT","PATCH","COPY","DELETE"]) 
 def none_create():
         requests.post('http://localhost/inc')
 
         return Response("Method not allowed", status=405, mimetype='application/text')
 
+# Function for handling requests sent with wrong methods
 @app.route('/api/v1/rides/count',methods=["CONNECT","PATCH","HEAD","OPTIONS","TRACE","POST","PUT","PATCH","COPY","DELETE"])
 def none_count():
         requests.post('http://localhost/inc')
         return Response("Method not allowed", status=405, mimetype='application/text')
 
+# Function for listing all future rides
 @app.route('/api/v1/rides',methods=["GET"])
 def list_rides():
     
@@ -93,9 +96,7 @@ def list_rides():
     
     for i in range(0,len(res)):
         datetimeObj = datetime.strptime(res[i][2], '%d-%m-%Y:%S-%M-%H')
-        #return str(datetimeObj)+" "+str(datetime.now())
         if datetimeObj>datetime.now():
-            #result.append(res[i])
             temp = {}
             temp["rideId"] = res[i][0]
             temp["USERNAME"] = res[i][1]
@@ -106,6 +107,7 @@ def list_rides():
     else:
         return jsonify(result)
 
+# Function for getting count of rides created
 @app.route('/api/v1/rides/count',methods=["GET"])
 def count_rides():
 
@@ -115,6 +117,7 @@ def count_rides():
     res = eval(res)
     return json.dumps(res[0]),200
 
+# Function for incrementing count of requests to rides microservice
 @app.route('/inc',methods=["POST"])
 def inc():
         inp={"table":"COUNT_NO","columns":["RIDES","RIDEACCESS"],"where":""}
@@ -127,6 +130,7 @@ def inc():
         inp={"table":"COUNT_NO","type":"insert","columns":["RIDES","RIDEACCESS"],"data":[str(res[0][0]),str(res[0][1])]}
         send=requests.post('http://localhost/api/v1/db/write',json=inp)
 
+# Function for getting count of requests to rides microservice
 @app.route('/api/v1/_count',methods=["GET"])
 def get_count():
     
@@ -136,6 +140,7 @@ def get_count():
     res = eval(res)
     return jsonify(res[0]) 
 
+# Function for reseting count of requests to rides microservice
 @app.route('/api/v1/_count',methods=["DELETE"])
 def reset_count(): 
     inp={"table":"COUNT_NO","columns":["RIDES","RIDEACCESS"],"where":""}
@@ -148,11 +153,13 @@ def reset_count():
     send=requests.post('http://localhost/api/v1/db/write',json=inp)
     return Response("Count reseted", status=200, mimetype='application/text') 
 
+# Function for handling requests sent with wrong methods
 @app.route('/api/v1/rides/<rideId>',methods=["CONNECT","PATCH","HEAD","OPTIONS","TRACE","PUT","PATCH","COPY"])
 def none_det(ridedId):            
     requests.post('http://localhost/inc') 
     return Response("Method not allowed", status=405, mimetype='application/text')
 
+# Function to get the details of a particular ride
 @app.route('/api/v1/rides/<rideId>',methods=["GET"])
 def details_ride(rideId):
     requests.post('http://localhost/inc') 
@@ -195,11 +202,11 @@ def details_ride(rideId):
 
         return jsonify(temp)
 
+# Function for adding user to a ride
 @app.route('/api/v1/rides/<rideId>',methods=["POST"])
 def join_ride(rideId):
     requests.post('http://localhost/inc') 
     json = request.get_json()
-    #inp={"table":"LOGIN","columns":["USERNAME","PASSWORD"],"where":"USERNAME='"+json["username"]+"'"}
     send=requests.get('http://assignment-81781011.us-east-1.elb.amazonaws.com/api/v1/users')
     #SEND REQUEST to list rides
     credential=send.content
@@ -223,6 +230,7 @@ def join_ride(rideId):
         #rides[rideId][4].append(json["username"])
         return Response("Joined ride",status=200,mimetype="application/text")
 
+# Function to delete a ride
 @app.route('/api/v1/rides/<rideId>',methods=["DELETE"])
 def delete_ride(rideId):
     requests.post('http://localhost/inc') 
@@ -231,14 +239,12 @@ def delete_ride(rideId):
     ride=send.content
     ride=eval(ride)
     rideId = int(rideId)
-    #if(len(ride)==0):
-    #    return Response("Wrong rideId",status=204,mimetype="application/text")
-    #else:
     inp={"table":"RIDES","type":"delete","where":"RIDEID='"+str(rideId)+"'"}
     send=requests.post('http://'+os.environ['DBAAS_IP']+'/api/v1/db/write',json=inp)
     ret=send.json()
     return Response("Deleted ride",status=200,mimetype="application/text")
 
+# Function for writing count of requests to rides microservice to rides db
 @app.route('/api/v1/db/write',methods=["POST"])
 def write_db():
     db = pymysql.connect(**config)
@@ -265,12 +271,12 @@ def write_db():
             sql = "DELETE FROM "+json["table"]
 
     cur.execute(sql)
-    #cur.execute("INSERT INTO LOGIN(username,password) VALUES ('Test','123')")
     db.commit()
     cur.close()
     db.close()
     return Response("1",status=200,mimetype="application/text")
 
+# Function for reading count of requests to rides microservice from rides db
 @app.route('/api/v1/db/read',methods=["POST"])
 def read_db():
     db = pymysql.connect(**config)
@@ -295,6 +301,7 @@ def read_db():
     db.close()
     return Response(str(results),status=200,mimetype="application/text")
 
+# Function for clearing the database
 @app.route('/api/v1/db/clear',methods=["POST"])
 def clear_db():
     inp={"table":"RIDES","type":"delete", "where":""}
